@@ -1,0 +1,42 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+GameKitEnv:
+  value: {{AWSGAMEKIT::SYS::ENV}}
+GameKitGameName:
+  value: {{AWSGAMEKIT::SYS::GAMENAME}}
+GameKitBase36AwsAccountId:
+  value: {{AWSGAMEKIT::SYS::BASE36AWSACCOUNTID}}
+GameKitShortAwsRegionCode:
+  value: {{AWSGAMEKIT::SYS::SHORTREGIONCODE}}
+BundlesTableName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_usergamedata_bundles"
+BundleItemsTableName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_usergamedata_bundleitems"
+UserGameDataDbLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GamedataDbLambdaRole"
+UserGameDataLambdaInvokerRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GamedataLambdaRole"
+BatchDeleteHelperUserGameDataLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_BatchDeleteHelper"
+AddUserGameDataLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AddBundle"
+DeleteAllUserGameDataLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_DeleteAll"
+DeleteBundleUserGameDataLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_DeleteBundle"
+ListUserGameDataBundlesLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_ListBundles"
+GetBundleUserGameDataLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GetBundle"
+GetItemUserGameDataLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GetItem"
+UpdateItemUserGameDataLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_UpdateItem"
+DetailedLambdaLoggingDisabled:
+  value: false
+LambdaFunctionsReplacementID:
+  value: "GAMEKIT_LAMBDA_FUNCTIONS_REPLACEMENT_ID_usergamedata_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCommonLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CommonLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"

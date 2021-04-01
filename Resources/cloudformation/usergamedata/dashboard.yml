@@ -1,0 +1,681 @@
+---
+ # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ # SPDX-License-Identifier: Apache-2.0
+ 
+Description: (GAMEKIT1004D) - The AWS CloudFormation template for the AWS GameKit User Gameplay Data. v1.0.0 Cloudwatch Dashboard
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  GameKitEnv:
+    Type: String
+  GameKitGameName:
+    Type: String
+
+Resources:    
+  CloudWatchDashboard:
+      Type: 'AWS::CloudWatch::Dashboard'
+      Properties:
+          DashboardName: !Join [ '-', ['GameKit', !Ref GameKitGameName, !Ref GameKitEnv, !Ref "AWS::Region", 'UserGameplayData'] ]
+          DashboardBody: !Sub
+            - >
+              {
+                  "widgets": [
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 51,
+                          "x": 12,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ { "expression": "FILL(METRICS(), 0)", "region": "${AWS::Region}", "stat": "Sum", "period": 300 } ],
+                                  [ "AWS/DynamoDB", "ReturnedBytes", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", "Operation", "GetRecords", { "id": "m0r1", "visible": false, "label": "Bundle Items Table" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", ".", ".", { "id": "m0r2", "visible": false, "label": "Bundles Table" } ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Table Size In Bytes",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "bottom"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "period": 300,
+                              "stat": "Sum"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 69,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ { "expression": "100*(m1/m4)", "label": "Bundle Items Table", "id": "e1", "region": "${AWS::Region}" } ],
+                                  [ { "expression": "100*(m2/m3)", "label": "Bundles Table", "id": "e2", "region": "${AWS::Region}" } ],
+                                  [ "AWS/DynamoDB", "ConsumedWriteCapacityUnits", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", { "id": "m1", "visible": false, "label": "Bundle Items Table ConsumedWriteCapacityUnits" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", { "id": "m2", "visible": false, "label": "Bundles Table ConsumedWriteCapacityUnits" } ],
+                                  [ ".", "ProvisionedWriteCapacityUnits", ".", ".", { "label": "Bundles Table ProvisionedWriteCapacityUnits", "visible": false, "id": "m3" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundleitems", { "visible": false, "label": "Bundle Items Table ProvisionedWriteCapacityUnits", "id": "m4" } ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Write Capacity Consumed",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "right"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "stat": "Sum",
+                              "period": 60
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 51,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ { "expression": "FILL(METRICS(), 0)", "region": "${AWS::Region}", "period": 300 } ],
+                                  [ "AWS/DynamoDB", "ReturnedItemCount", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", "Operation", "Scan", { "id": "m0r1", "visible": false, "label": "Bundle Items Table" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", ".", ".", { "id": "m0r2", "visible": false, "label": "Bundles Table" } ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Table Size In Rows",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "bottom"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "stat": "Sum",
+                              "period": 300,
+                              "yAxis": {
+                                  "left": {
+                                      "label": ""
+                                  }
+                              }
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 69,
+                          "x": 12,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ { "expression": "FILL(METRICS(), 0)", "region": "${AWS::Region}", "period": 60 } ],
+                                  [ "AWS/DynamoDB", "WriteThrottleEvents", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", { "id": "m0r1", "visible": false, "label": "Bundle Items Table" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", { "id": "m0r2", "visible": false, "label": "Bundles Table" } ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Write Throttle Events Sum",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "bottom"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "stat": "Sum",
+                              "period": 60
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 63,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ { "expression": "100*(m1/m3)", "label": "Bundle Items Table", "id": "e1", "region": "${AWS::Region}" } ],
+                                  [ { "expression": "100*(m2/m4)", "label": "Bundles Table", "id": "e2", "region": "${AWS::Region}" } ],
+                                  [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", { "id": "m1", "label": "Bundle Items Table ConsumedReadCapacityUnits", "visible": false } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", { "id": "m2", "label": "Bundles Table ConsumedReadCapacityUnits", "visible": false } ],
+                                  [ ".", "ProvisionedReadCapacityUnits", ".", "gamekit_${env}_${gamename}_usergamedata_bundleitems", { "label": "Bundle Items Table ProvisionedReadCapacityUnits", "id": "m3", "visible": false } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", { "label": "Bundles Table ProvisionedReadCapacityUnits", "id": "m4", "visible": false } ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Read Capacity Consumed",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "right"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "period": 300,
+                              "stat": "Average"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 63,
+                          "x": 12,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ { "expression": "FILL(METRICS(), 0)", "region": "${AWS::Region}", "period": 60 } ],
+                                  [ "AWS/DynamoDB", "ReadThrottleEvents", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", { "id": "m0r1", "visible": false, "label": "Bundle Items Table" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", { "id": "m0r2", "visible": false, "label": "Bundles Table" } ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Read Throttle Events Sum",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "bottom"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "period": 60,
+                              "stat": "Sum"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 57,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ { "expression": "FILL(METRICS(), 0)", "region": "${AWS::Region}", "period": 60 } ],
+                                  [ "AWS/DynamoDB", "ThrottledRequests", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", { "id": "m0r1", "visible": false, "label": "Bundle Item Table" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", { "id": "m0r2", "visible": false, "label": "Bundle Table" } ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Throttled Requests Sum",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "bottom"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "period": 60,
+                              "stat": "Sum"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 57,
+                          "x": 12,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ { "expression": "FILL(METRICS(), 0)", "region": "${AWS::Region}", "period": 60 } ],
+                                  [ "AWS/DynamoDB", "UserErrors", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", { "id": "m0r1", "visible": false, "label": "Bundle Items Table" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_bundles", { "id": "m0r2", "visible": false, "label": "Bundles Table" } ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "User Errors Sum",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "bottom"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "period": 60,
+                              "stat": "Sum"
+                          }
+                      },
+                      {
+                          "height": 3,
+                          "width": 24,
+                          "y": 0,
+                          "x": 0,
+                          "type": "text",
+                          "properties": {
+                              "markdown": "# [GameKit User Gameplay Data Module ](https://${AWS::Region}.console.aws.amazon.com/cloudformation/home?region=${AWS::Region}#/stacks/stackinfo?filteringStatus=active&filteringText=&viewNested=true&hideStacks=false&stackId=arn%3Aaws%3Acloudformation%3A${AWS::Region}%3A282728432022%3Astack%2Fgamekit-${env}-${gamename}-identity%2Fb9edb5a0-ee2b-11eb-b850-021971c5004f) \nAmazon GameKit's User Gameplay Data module works alongside the Identity module to store gameplay data and associate the data with a player's unique identifier. With this Amazon GameKit feature players will be able to access, modify and delete their data from any device.\n\n\n \n"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 24,
+                          "y": 3,
+                          "x": 0,
+                          "type": "text",
+                          "properties": {
+                              "markdown": "## [Lambda ](https://${AWS::Region}.console.aws.amazon.com/lambda/home?r&region=${AWS::Region}#/functions?f0=true&n0=false&op=and&v0=gamekit)\nAmazon GameKit's User Gameplay Data module uses Lambda functions as handlers for processing requests to list, read, update or delete data. \n## Metrics\n#### Function Invocations\nThis chart shows the total number of times each Lambda function has been invoked.\n#### Function Invocations\nThis chart shows the total number of instances each Lambda has running concurrently.\n#### Function Errors\nThis chart shows the total number of errors logged for each Lambda function. Check [CloudWatch Logs](https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?#logsV2:log-groups$3FlogGroupNameFilter$3D$252Faws$252Flambda$252Fgamekit) for more information.\n#### P90 Function Duration\nThis chart shows the P90 execution time for each Lambda function.\n#### P95 Function Duration\nThis chart shows the P95 execution time for each Lambda function.\n#### P99 Function Duration\nThis chart shows the P99 execution time for each Lambda function.\n#### Average Function Duration\nThis chart shows the average execution time for each Lambda function.\n#### Total Function Execution Time\nThis chart shows the total amount of execution time for each Lambda function."
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 8,
+                          "y": 15,
+                          "x": 16,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_usergamedata_add", { "label": "Add" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_batch_delete_helper", { "label": "Batch Delete Helper" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deleteall", { "label": "Delete All" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deletebundle", { "label": "Delete Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getbundle", { "label": "Get Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getitem", { "label": "Get Item" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_listbundles", { "label": "List Bundles" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_updateitem", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "p99",
+                              "title": "P99 Function Duration"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 21,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_usergamedata_add", { "label": "Add" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_batch_delete_helper", { "label": "Batch Delete Helper" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deleteall", { "label": "Delete All" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deletebundle", { "label": "Delete Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getbundle", { "label": "Get Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getitem", { "label": "Get Item" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_listbundles", { "label": "List Bundles" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_updateitem", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "Average",
+                              "title": "Average Function Duration"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 8,
+                          "y": 9,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/Lambda", "Invocations", "FunctionName", "gamekit_${env}_${gamename}_usergamedata_add", { "label": "Add" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_batch_delete_helper", { "label": "Batch Delete Helper" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deleteall", { "label": "Delete All" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deletebundle", { "label": "Delete Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getbundle", { "label": "Get Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getitem", { "label": "Get  Item" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_listbundles", { "label": "List Bundles" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_updateitem", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "Average",
+                              "title": "Function Invocations"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 8,
+                          "y": 9,
+                          "x": 16,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/Lambda", "Errors", "FunctionName", "gamekit_${env}_${gamename}_usergamedata_add", { "label": "Add" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_batch_delete_helper", { "label": "Batch Delete Helper" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deleteall", { "label": "Delete All" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deletebundle", { "label": "Delete Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getbundle", { "label": "Get Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getitem", { "label": "Get Item" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_listbundles", { "label": "List Bundles" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_updateitem", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "Average",
+                              "title": "Function Errors"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 21,
+                          "x": 12,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_usergamedata_add", { "label": "Add" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_batch_delete_helper", { "label": "Batch Delete Helper" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deleteall", { "label": "Delete All" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deletebundle", { "label": "Delete Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getbundle", { "label": "Get Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getitem", { "label": "Get Item" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_listbundles", { "label": "List Bundles" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_updateitem", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "Sum",
+                              "title": "Total Function Execution Time"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 24,
+                          "y": 27,
+                          "x": 0,
+                          "type": "text",
+                          "properties": {
+                              "markdown": "## [API Gateway](https://${AWS::Region}.console.aws.amazon.com/lambda/home?r&region=${AWS::Region}#/functions?f0=true&n0=false&op=and&v0=gamekit)\nUser Gameplay Data requests made by Amazon GameKit's clients pass through API Gateway to back-end Lambda functions. These metrics indicate the relative performance and volume of requests being handled by API Gateway.\n\n\n\n\n\n\n\n\n## Metrics\n#### Average Latency\nThis chart shows the average response time for each request made to the User Gameplay Data APIs.\n#### P90 Latency\nThis chart shows the P90 execution time for each request made to the User Gameplay Data APIs.\n#### P95 Latency\nThis chart shows the P95 execution time for each request made to the User Gameplay Data APIs.\n#### P99 Latency\nThis chart shows the P99 execution time for each request made to the User Gameplay Data APIs.\n#### 4XX Errors\nThis chart shows the sum of 4XX Errors that occur in each of the User Gameplay Data APIs.\n#### 5XX Errors\nThis chart shows the sum of 5XX Errors that occur in each of the User Gameplay Data APIs."
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 75,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/DynamoDB", "SuccessfulRequestLatency", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundleitems", "Operation", "Scan" ],
+                                  [ "...", "GetItem" ],
+                                  [ "...", "PutItem" ],
+                                  [ "...", "DeleteItem" ],
+                                  [ "...", "UpdateItem" ],
+                                  [ "...", "Query" ],
+                                  [ "...", "BatchWriteItem" ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Bundle Items Table Request Latency",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "right"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "stat": "Average",
+                              "period": 60,
+                              "yAxis": {
+                                  "left": {
+                                      "label": "",
+                                      "showUnits": true
+                                  }
+                              }
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 75,
+                          "x": 12,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/DynamoDB", "SuccessfulRequestLatency", "TableName", "gamekit_${env}_${gamename}_usergamedata_bundles", "Operation", "Scan", { "color": "#1f77b4" } ],
+                                  [ "...", "GetItem" ],
+                                  [ "...", "PutItem" ],
+                                  [ "...", "DeleteItem" ],
+                                  [ "...", "UpdateItem" ],
+                                  [ "...", "Query" ],
+                                  [ "...", "BatchWriteItem" ]
+                              ],
+                              "region": "${AWS::Region}",
+                              "title": "Bundle Table Request Latency",
+                              "copilot": true,
+                              "legend": {
+                                  "position": "right"
+                              },
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "stat": "Average",
+                              "period": 60,
+                              "yAxis": {
+                                  "left": {
+                                      "label": "",
+                                      "showUnits": true
+                                  }
+                              }
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 8,
+                          "y": 9,
+                          "x": 8,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/Lambda", "ConcurrentExecutions", "FunctionName", "gamekit_${env}_${gamename}_usergamedata_add", { "label": "Add" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_batch_delete_helper", { "label": "Batch Delete Helper" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deleteall", { "label": "Delete All" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deletebundle", { "label": "Delete Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getbundle", { "label": "Get Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getitem", { "label": "Get Item" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_listbundles", { "label": "List Bundles" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_updateitem", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "Sum",
+                              "title": "Concurrent Executions"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 8,
+                          "y": 15,
+                          "x": 8,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_usergamedata_add", { "label": "Add" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_batch_delete_helper", { "label": "Batch Delete Helper" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deleteall", { "label": "Delete All" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deletebundle", { "label": "Delete Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getbundle", { "label": "Get Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getitem", { "label": "Get Item" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_listbundles", { "label": "List Bundles" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_updateitem", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "p95",
+                              "title": "P95 Function Duration"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 8,
+                          "y": 15,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_usergamedata_add", { "label": "Add" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_batch_delete_helper", { "label": "Batch Delete Helper" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deleteall", { "label": "Delete All" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_deletebundle", { "label": "Delete Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getbundle", { "label": "Get Bundle" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_getitem", { "label": "Get Item" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_listbundles", { "label": "List Bundles" } ],
+                                  [ "...", "gamekit_${env}_${gamename}_usergamedata_updateitem", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "p90",
+                              "title": "P90 Function Duration"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 24,
+                          "y": 45,
+                          "x": 0,
+                          "type": "text",
+                          "properties": {
+                              "markdown": "## [Dynamo DB](https://${AWS::Region}.console.aws.amazon.com/lambda/home?r&region=${AWS::Region}#/functions?f0=true&n0=false&op=and&v0=gamekit)\nAmazon GameKit's User Gameplay Data module uses Dynamo DB to store data passed through API Gateway from clients. \n\nData is split into the Bundles Table and the Bundle Item Table.\n\n**Bundles Table** - Stores Information about what Bundles a player has. \n\n* Primary Key = <PlayerId>\n* Sort Key = <BundleName>\n\n**Bundle Item Table** - Stores Information about what Items are contained inside of a player's Bundles.\n* Primary Key = <PlayerId>_<BundleName>\n* Sort Key = <ItemKey> \n\n## Metrics\n#### Total Size In Rows\nThis chart shows the total number of rows currently present in both tables.\n\n#### Total Size In Rows\nThis chart shows the total data size of each table.\n\n#### Throttled Requests Sum\nThis chart shows the sum of throttled requests for each table.\n\n#### User Errors Sum\nThis chart shows the sum of User Errors for each table.\n\n#### Read Capacity Consumed\nThis chart shows the percentage of provisioned Dynamo DB Read Units that are currently being used for each table.\n\n*Note* - If you are on a non-production branch you may see an error here. This is because the tables are in 'On Demand' mode meaning there are no units provisioned. \n\n#### Read Throttle Events Sum\nThis chart shows the sum of throttled read events for each table.\n\n#### Write Capacity Consumed\nThis chart shows the percentage of provisioned Dynamo DB Write Units that are currently being used.\n\n*Note* - If you are on a non-production branch you may see an error here. This is because the tables are in 'On Demand' mode meaning there are no units provisioned. \n\n#### Read Throttle Events Sum\nThis chart shows the sum of throttled write events for each table.\n\n#### Bundle Items Table Request Latency\nThis chart shows the latency of the following Dynamo DB operations for the Bundle Items Table: Scan, GetItem, PutItem, DeleteItem, UpdateItem, Query, BatchWriteItem.\n\n\n#### Bundles Table Request Latency\nThis chart shows the latency of the following Dynamo DB operations for the Bundles Table: Scan, GetItem, PutItem, DeleteItem, UpdateItem, Query, BatchWriteItem."
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 39,
+                          "x": 12,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/ApiGateway", "5XXError", "ApiName", "gamekit_${env}_${gamename}_main", "Resource", "/usergamedata/{bundle_name}", "Stage", "${AWS::Region}", "Method", "POST", { "label": "Add" } ],
+                                  [ "...", "/usergamedata", ".", ".", ".", "DELETE", { "label": "Delete All" } ],
+                                  [ "...", "/usergamedata/{bundle_name}", ".", ".", ".", ".", { "label": "Delete Bundle" } ],
+                                  [ "...", "GET", { "label": "Get Bundle" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", ".", { "label": "Get Item" } ],
+                                  [ "...", "/usergamedata/listbundles", ".", ".", ".", ".", { "label": "List Bundles" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", "PUT", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "Sum",
+                              "title": "5XX Errors"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 12,
+                          "y": 39,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/ApiGateway", "4XXError", "ApiName", "gamekit_${env}_${gamename}_main", "Resource", "/usergamedata/{bundle_name}", "Stage", "${AWS::Region}", "Method", "POST", { "label": "Add" } ],
+                                  [ "...", "/usergamedata", ".", ".", ".", "DELETE", { "label": "Delete All" } ],
+                                  [ "...", "/usergamedata/{bundle_name}", ".", ".", ".", ".", { "label": "Delete Bundle" } ],
+                                  [ "...", "GET", { "label": "Get Bundle" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", ".", { "label": "Get Item" } ],
+                                  [ "...", "/usergamedata/listbundles", ".", ".", ".", ".", { "label": "List Bundle" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", "PUT", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "Sum",
+                              "title": "4XX Errors"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 6,
+                          "y": 33,
+                          "x": 6,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/ApiGateway", "Latency", "ApiName", "gamekit_${env}_${gamename}_main", "Resource", "/usergamedata/{bundle_name}", "Stage", "${AWS::Region}", "Method", "POST", { "label": "Add" } ],
+                                  [ "...", "/usergamedata", ".", ".", ".", "DELETE", { "label": "Delete All" } ],
+                                  [ "...", "/usergamedata/{bundle_name}", ".", ".", ".", ".", { "label": "Delete Bundle" } ],
+                                  [ "...", "GET", { "label": "Get Bundle" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", ".", { "label": "Get Item" } ],
+                                  [ "...", "/usergamedata/listbundles", ".", ".", ".", ".", { "label": "List Bundles" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", "PUT", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "p90",
+                              "title": "P90 Latency"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 6,
+                          "y": 33,
+                          "x": 12,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/ApiGateway", "Latency", "ApiName", "gamekit_${env}_${gamename}_main", "Resource", "/usergamedata/{bundle_name}", "Stage", "${AWS::Region}", "Method", "POST", { "label": "Add" } ],
+                                  [ "...", "/usergamedata", ".", ".", ".", "DELETE", { "label": "Delete All" } ],
+                                  [ "...", "/usergamedata/{bundle_name}", ".", ".", ".", ".", { "label": "Delete Bundle" } ],
+                                  [ "...", "GET", { "label": "Get Bundle" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", ".", { "label": "Get Item" } ],
+                                  [ "...", "/usergamedata/listbundles", ".", ".", ".", ".", { "label": "List Bundles" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", "PUT", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "p95",
+                              "title": "P95 Latency"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 6,
+                          "y": 33,
+                          "x": 18,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/ApiGateway", "Latency", "ApiName", "gamekit_${env}_${gamename}_main", "Resource", "/usergamedata/{bundle_name}", "Stage", "${AWS::Region}", "Method", "POST", { "label": "Add" } ],
+                                  [ "...", "/usergamedata", ".", ".", ".", "DELETE", { "label": "Delete All" } ],
+                                  [ "...", "/usergamedata/{bundle_name}", ".", ".", ".", ".", { "label": "Delete Bundle" } ],
+                                  [ "...", "GET", { "label": "Get Bundle" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", ".", { "label": "Get Item" } ],
+                                  [ "...", "/usergamedata/listbundles", ".", ".", ".", ".", { "label": "List Bundles" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", "PUT", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "p99",
+                              "title": "P99 Latency"
+                          }
+                      },
+                      {
+                          "height": 6,
+                          "width": 6,
+                          "y": 33,
+                          "x": 0,
+                          "type": "metric",
+                          "properties": {
+                              "metrics": [
+                                  [ "AWS/ApiGateway", "Latency", "ApiName", "gamekit_${env}_${gamename}_main", "Resource", "/usergamedata/{bundle_name}", "Stage", "${AWS::Region}", "Method", "POST", { "label": "Add" } ],
+                                  [ "...", "/usergamedata", ".", ".", ".", "DELETE", { "label": "Delete All" } ],
+                                  [ "...", "/usergamedata/{bundle_name}", ".", ".", ".", ".", { "label": "Delete Bundle" } ],
+                                  [ "...", "GET", { "label": "Get Bundle" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", ".", { "label": "Get Item" } ],
+                                  [ "...", "/usergamedata/listbundles", ".", ".", ".", ".", { "label": "List Bundles" } ],
+                                  [ "...", "/usergamedata/{bundle_name}/{bundle_item_key}", ".", ".", ".", "PUT", { "label": "Update Item" } ]
+                              ],
+                              "view": "timeSeries",
+                              "stacked": false,
+                              "region": "${AWS::Region}",
+                              "period": 60,
+                              "stat": "Average",
+                              "title": "Average Latency"
+                          }
+                      }
+                  ]
+              }
+            - env: !Ref GameKitEnv
+              gamename: !Ref GameKitGameName 

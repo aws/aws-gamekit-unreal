@@ -1,0 +1,36 @@
+---
+ # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ # SPDX-License-Identifier: Apache-2.0
+ 
+Description: The AWS CloudFormation template for the AWS GameKit Main v1.0.0 Cloudwatch Dashboard
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  GameKitEnv:
+    Type: String
+  GameKitGameName:
+    Type: String
+
+Resources:    
+  CloudWatchDashboard:
+        Type: 'AWS::CloudWatch::Dashboard'
+        Properties:
+            DashboardName: !Join [ '-', ['GameKit', !Ref GameKitEnv, !Ref "AWS::Region", 'main'] ]
+            DashboardBody: !Sub
+              - >
+                {
+                  "widgets": [
+                    {
+                        "type": "text",
+                        "x": 0,
+                        "y": 0,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "markdown": "PUT IN A REAL DASHBOARD"
+                        }
+                    }
+                  ]
+                }
+              - env: !Ref GameKitEnv
+                gamename: !Ref GameKitGameName 

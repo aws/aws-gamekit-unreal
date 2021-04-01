@@ -1,0 +1,1643 @@
+---
+ # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ # SPDX-License-Identifier: Apache-2.0
+ 
+Description: (GAMEKIT1005D) - The AWS CloudFormation template for the AWS GameKit Game State Cloud Saving v1.0.0 Cloudwatch Dashboard
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  GameKitEnv:
+    Type: String
+  GameKitGameName:
+    Type: String
+  PlayerGameSavesTableName:
+    Type: String
+  DeleteSaveSlotLambdaName:
+    Type: String
+  GeneratePreSignedGetURLLambdaName:
+    Type: String
+  GeneratePreSignedPutURLLambdaName:
+    Type: String
+  GetAllSlotsMetadataLambdaName:
+    Type: String
+  GetSlotMetadataLambdaName:
+    Type: String
+  UpdateSlotMetadataLambdaName:
+    Type: String
+
+Resources:    
+  CloudWatchDashboard:
+        Type: 'AWS::CloudWatch::Dashboard'
+        Properties:
+            DashboardName: !Join [ '-', ['GameKit', !Ref GameKitGameName, !Ref GameKitEnv, !Ref "AWS::Region", 'GameStateCloudSaving'] ]
+            DashboardBody: !Sub
+              - >
+                {
+                  "widgets": [
+                    {
+                      "height": 1,
+                      "width": 24,
+                      "y": 7,
+                      "x": 0,
+                      "type": "text",
+                      "properties": {
+                        "markdown": "## Function: GeneratePreSignedGetURL"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 8,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Invocations",
+                              "FunctionName",
+                              "${GeneratePreSignedGetURLLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Invocations"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 8,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Duration",
+                              "FunctionName",
+                              "${GeneratePreSignedGetURLLambdaName}",
+                            {
+                              "stat": "Average",
+                              "label": "Average",
+                              "color": "#2ca02c"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "stat": "p90",
+                              "label": "p90",
+                              "color": "#ffbb78"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p95",
+                              "color": "#ff7f0e",
+                              "stat": "p95"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p99",
+                              "stat": "p99"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 14,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Errors",
+                              "FunctionName",
+                              "${GeneratePreSignedGetURLLambdaName}",
+                            {
+                              "id": "errors",
+                              "stat": "Sum",
+                              "color": "#d13212"
+                            }
+                          ],
+                          [
+                              ".",
+                              "Invocations",
+                              ".",
+                              ".",
+                            {
+                              "id": "invocations",
+                              "stat": "Sum",
+                              "visible": false
+                            }
+                          ],
+                          [
+                            {
+                              "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                              "label": "Success rate (%)",
+                              "id": "availability",
+                              "yAxis": "right"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Error count and success rate (%)",
+                        "yAxis": {
+                          "right": {
+                            "max": 100
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 14,
+                      "x": 8,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Throttles",
+                              "FunctionName",
+                              "${GeneratePreSignedGetURLLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 14,
+                      "x": 16,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "ConcurrentExecutions",
+                              "FunctionName",
+                              "${GeneratePreSignedGetURLLambdaName}",
+                            {
+                              "stat": "Maximum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Concurrent executions"
+                      }
+                    },
+                    {
+                      "height": 1,
+                      "width": 24,
+                      "y": 20,
+                      "x": 0,
+                      "type": "text",
+                      "properties": {
+                        "markdown": "## Function: GeneratePreSignedPutURL"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 21,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Invocations",
+                              "FunctionName",
+                              "${GeneratePreSignedPutURLLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Invocations"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 21,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Duration",
+                              "FunctionName",
+                              "${GeneratePreSignedPutURLLambdaName}",
+                            {
+                              "stat": "Average",
+                              "label": "Average",
+                              "color": "#2ca02c"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "stat": "p90",
+                              "label": "p90",
+                              "color": "#ffbb78"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p95",
+                              "color": "#ff7f0e",
+                              "stat": "p95"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p99",
+                              "stat": "p99"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 27,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Errors",
+                              "FunctionName",
+                              "${GeneratePreSignedPutURLLambdaName}",
+                            {
+                              "id": "errors",
+                              "stat": "Sum",
+                              "color": "#d13212"
+                            }
+                          ],
+                          [
+                              ".",
+                              "Invocations",
+                              ".",
+                              ".",
+                            {
+                              "id": "invocations",
+                              "stat": "Sum",
+                              "visible": false
+                            }
+                          ],
+                          [
+                            {
+                              "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                              "label": "Success rate (%)",
+                              "id": "availability",
+                              "yAxis": "right"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Error count and success rate (%)",
+                        "yAxis": {
+                          "right": {
+                            "max": 100
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 27,
+                      "x": 8,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Throttles",
+                              "FunctionName",
+                              "${GeneratePreSignedPutURLLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 27,
+                      "x": 16,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "ConcurrentExecutions",
+                              "FunctionName",
+                              "${GeneratePreSignedPutURLLambdaName}",
+                            {
+                              "stat": "Maximum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Concurrent executions"
+                      }
+                    },
+                    {
+                      "height": 1,
+                      "width": 24,
+                      "y": 33,
+                      "x": 0,
+                      "type": "text",
+                      "properties": {
+                        "markdown": "## Function: GetAllSlotsMetadata"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 34,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Invocations",
+                              "FunctionName",
+                              "${GetAllSlotsMetadataLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Invocations"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 34,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Duration",
+                              "FunctionName",
+                              "${GetAllSlotsMetadataLambdaName}",
+                            {
+                              "stat": "Average",
+                              "label": "Average",
+                              "color": "#2ca02c"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "stat": "p90",
+                              "label": "p90",
+                              "color": "#ffbb78"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p95",
+                              "color": "#ff7f0e",
+                              "stat": "p95"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p99",
+                              "stat": "p99"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 40,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Errors",
+                              "FunctionName",
+                              "${GetAllSlotsMetadataLambdaName}",
+                            {
+                              "id": "errors",
+                              "stat": "Sum",
+                              "color": "#d13212"
+                            }
+                          ],
+                          [
+                              ".",
+                              "Invocations",
+                              ".",
+                              ".",
+                            {
+                              "id": "invocations",
+                              "stat": "Sum",
+                              "visible": false
+                            }
+                          ],
+                          [
+                            {
+                              "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                              "label": "Success rate (%)",
+                              "id": "availability",
+                              "yAxis": "right"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Error count and success rate (%)",
+                        "yAxis": {
+                          "right": {
+                            "max": 100
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 40,
+                      "x": 8,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Throttles",
+                              "FunctionName",
+                              "${GetAllSlotsMetadataLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 40,
+                      "x": 16,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "ConcurrentExecutions",
+                              "FunctionName",
+                              "${GetAllSlotsMetadataLambdaName}",
+                            {
+                              "stat": "Maximum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Concurrent executions"
+                      }
+                    },
+                    {
+                      "height": 1,
+                      "width": 24,
+                      "y": 46,
+                      "x": 0,
+                      "type": "text",
+                      "properties": {
+                        "markdown": "## Function: GetSlotMetadata"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 47,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Invocations",
+                              "FunctionName",
+                              "${GetSlotMetadataLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Invocations"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 47,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Duration",
+                              "FunctionName",
+                              "${GetSlotMetadataLambdaName}",
+                            {
+                              "stat": "Average",
+                              "label": "Average",
+                              "color": "#2ca02c"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "stat": "p90",
+                              "label": "p90",
+                              "color": "#ffbb78"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p95",
+                              "color": "#ff7f0e",
+                              "stat": "p95"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p99",
+                              "stat": "p99"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 53,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Errors",
+                              "FunctionName",
+                              "${GetSlotMetadataLambdaName}",
+                            {
+                              "id": "errors",
+                              "stat": "Sum",
+                              "color": "#d13212"
+                            }
+                          ],
+                          [
+                              ".",
+                              "Invocations",
+                              ".",
+                              ".",
+                            {
+                              "id": "invocations",
+                              "stat": "Sum",
+                              "visible": false
+                            }
+                          ],
+                          [
+                            {
+                              "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                              "label": "Success rate (%)",
+                              "id": "availability",
+                              "yAxis": "right"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Error count and success rate (%)",
+                        "yAxis": {
+                          "right": {
+                            "max": 100
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 53,
+                      "x": 8,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Throttles",
+                              "FunctionName",
+                              "${GetSlotMetadataLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 53,
+                      "x": 16,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "ConcurrentExecutions",
+                              "FunctionName",
+                              "${GetSlotMetadataLambdaName}",
+                            {
+                              "stat": "Maximum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Concurrent executions"
+                      }
+                    },
+                    {
+                      "height": 1,
+                      "width": 24,
+                      "y": 59,
+                      "x": 0,
+                      "type": "text",
+                      "properties": {
+                        "markdown": "## Function: UpdateSlotMetadata"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 60,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Invocations",
+                              "FunctionName",
+                              "${UpdateSlotMetadataLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Invocations"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 60,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Duration",
+                              "FunctionName",
+                              "${UpdateSlotMetadataLambdaName}",
+                            {
+                              "stat": "Average",
+                              "label": "Average",
+                              "color": "#2ca02c"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "stat": "p90",
+                              "label": "p90",
+                              "color": "#ffbb78"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p95",
+                              "color": "#ff7f0e",
+                              "stat": "p95"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p99",
+                              "stat": "p99"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 66,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Errors",
+                              "FunctionName",
+                              "${UpdateSlotMetadataLambdaName}",
+                            {
+                              "id": "errors",
+                              "stat": "Sum",
+                              "color": "#d13212"
+                            }
+                          ],
+                          [
+                              ".",
+                              "Invocations",
+                              ".",
+                              ".",
+                            {
+                              "id": "invocations",
+                              "stat": "Sum",
+                              "visible": false
+                            }
+                          ],
+                          [
+                            {
+                              "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                              "label": "Success rate (%)",
+                              "id": "availability",
+                              "yAxis": "right"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Error count and success rate (%)",
+                        "yAxis": {
+                          "right": {
+                            "max": 100
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 66,
+                      "x": 8,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Throttles",
+                              "FunctionName",
+                              "${UpdateSlotMetadataLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 66,
+                      "x": 16,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "ConcurrentExecutions",
+                              "FunctionName",
+                              "${UpdateSlotMetadataLambdaName}",
+                            {
+                              "stat": "Maximum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Concurrent executions"
+                      }
+                    },
+                    {
+                      "height": 1,
+                      "width": 24,
+                      "y": 72,
+                      "x": 0,
+                      "type": "text",
+                      "properties": {
+                        "markdown": "## Function: DeleteSaveSlot"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 73,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Invocations",
+                              "FunctionName",
+                              "${DeleteSaveSlotLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Invocations"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 73,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Duration",
+                              "FunctionName",
+                              "${DeleteSaveSlotLambdaName}",
+                            {
+                              "stat": "Average",
+                              "label": "Average",
+                              "color": "#2ca02c"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "stat": "p90",
+                              "label": "p90",
+                              "color": "#ffbb78"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p95",
+                              "color": "#ff7f0e",
+                              "stat": "p95"
+                            }
+                          ],
+                          [
+                              "...",
+                            {
+                              "label": "p99",
+                              "stat": "p99"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 79,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Errors",
+                              "FunctionName",
+                              "${DeleteSaveSlotLambdaName}",
+                            {
+                              "id": "errors",
+                              "stat": "Sum",
+                              "color": "#d13212"
+                            }
+                          ],
+                          [
+                              ".",
+                              "Invocations",
+                              ".",
+                              ".",
+                            {
+                              "id": "invocations",
+                              "stat": "Sum",
+                              "visible": false
+                            }
+                          ],
+                          [
+                            {
+                              "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                              "label": "Success rate (%)",
+                              "id": "availability",
+                              "yAxis": "right"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Error count and success rate (%)",
+                        "yAxis": {
+                          "right": {
+                            "max": 100
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 79,
+                      "x": 8,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "Throttles",
+                              "FunctionName",
+                              "${DeleteSaveSlotLambdaName}",
+                            {
+                              "stat": "Sum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 8,
+                      "y": 79,
+                      "x": 16,
+                      "type": "metric",
+                      "properties": {
+                        "period": 60,
+                        "metrics": [
+                          [
+                              "AWS/Lambda",
+                              "ConcurrentExecutions",
+                              "FunctionName",
+                              "${DeleteSaveSlotLambdaName}",
+                            {
+                              "stat": "Maximum"
+                            }
+                          ]
+                        ],
+                        "region": "${AWS::Region}",
+                        "title": "Concurrent executions"
+                      }
+                    },
+                    {
+                      "height": 1,
+                      "width": 24,
+                      "y": 85,
+                      "x": 0,
+                      "type": "text",
+                      "properties": {
+                        "markdown": "## DynamoDB: player_gamesaves"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 92,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Write throttled requests (count)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Sum",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "ThrottledRequests",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "PutItem",
+                            {
+                              "color": "#0073BB"
+                            }
+                          ],
+                          [
+                              "...",
+                              "UpdateItem",
+                            {
+                              "color": "#FF7F0F"
+                            }
+                          ],
+                          [
+                              "...",
+                              "DeleteItem",
+                            {
+                              "color": "#2DA02D"
+                            }
+                          ],
+                          [
+                              "...",
+                              "BatchWriteItem",
+                            {
+                              "color": "#9468BD"
+                            }
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 86,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Read usage (average units/second)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "ProvisionedReadCapacityUnits",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                            {
+                              "label": "Provisioned",
+                              "color": "#E02020"
+                            }
+                          ],
+                          [
+                              ".",
+                              "ConsumedReadCapacityUnits",
+                              ".",
+                              ".",
+                            {
+                              "stat": "Sum",
+                              "id": "m1",
+                              "visible": false
+                            }
+                          ],
+                          [
+                            {
+                              "expression": "m1/PERIOD(m1)",
+                              "label": "Consumed",
+                              "id": "e1",
+                              "color": "#0073BB",
+                              "region": "${AWS::Region}"
+                            }
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 86,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Read throttled requests (count)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Sum",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "ThrottledRequests",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "GetItem",
+                            {
+                              "color": "#0073BB"
+                            }
+                          ],
+                          [
+                              "...",
+                              "Scan",
+                            {
+                              "color": "#FF7F0F"
+                            }
+                          ],
+                          [
+                              "...",
+                              "Query",
+                            {
+                              "color": "#2DA02D"
+                            }
+                          ],
+                          [
+                              "...",
+                              "BatchGetItem",
+                            {
+                              "color": "#9468BD"
+                            }
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 12,
+                      "y": 92,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Write usage (average units/second)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "ProvisionedWriteCapacityUnits",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                            {
+                              "label": "Provisioned",
+                              "color": "#E02020"
+                            }
+                          ],
+                          [
+                              ".",
+                              "ConsumedWriteCapacityUnits",
+                              ".",
+                              ".",
+                            {
+                              "stat": "Sum",
+                              "id": "m1",
+                              "visible": false
+                            }
+                          ],
+                          [
+                            {
+                              "expression": "m1/PERIOD(m1)",
+                              "label": "Consumed",
+                              "id": "e1",
+                              "color": "#0073BB",
+                              "region": "${AWS::Region}"
+                            }
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 6,
+                      "y": 98,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Get latency (milliseconds)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "SuccessfulRequestLatency",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "GetItem",
+                            {
+                              "color": "#0073BB",
+                              "label": "Get latency"
+                            }
+                          ],
+                          [
+                              "...",
+                              "BatchGetItem",
+                            {
+                              "color": "#9468BD",
+                              "label": "Batch get latency"
+                            }
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 6,
+                      "y": 98,
+                      "x": 6,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Put latency (milliseconds)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "SuccessfulRequestLatency",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "PutItem",
+                            {
+                              "stat": "Average",
+                              "color": "#0073BB",
+                              "label": "Put latency"
+                            }
+                          ],
+                          [
+                              "...",
+                              "BatchWriteItem",
+                            {
+                              "color": "#9468BD",
+                              "label": "Batch write latency"
+                            }
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 6,
+                      "y": 98,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Query latency (milliseconds)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "SuccessfulRequestLatency",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "Query"
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 6,
+                      "y": 98,
+                      "x": 18,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Scan latency (milliseconds)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "SuccessfulRequestLatency",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "Scan"
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 6,
+                      "y": 104,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Scan returned item count (average)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "ReturnedItemCount",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "Scan"
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 6,
+                      "y": 104,
+                      "x": 6,
+                      "type": "metric",
+                      "properties": {
+                        "title": "Query returned item count (average)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "ReturnedItemCount",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "Query"
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 6,
+                      "y": 104,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                        "title": "System errors read (count)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Sum",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "SystemErrors",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "GetItem",
+                            {
+                              "color": "#0073BB"
+                            }
+                          ],
+                          [
+                              "...",
+                              "Scan",
+                            {
+                              "color": "#FF7F0F"
+                            }
+                          ],
+                          [
+                              "...",
+                              "Query",
+                            {
+                              "color": "#2DA02D"
+                            }
+                          ],
+                          [
+                              "...",
+                              "BatchGetItem",
+                            {
+                              "color": "#9468BD"
+                            }
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    },
+                    {
+                      "height": 6,
+                      "width": 6,
+                      "y": 104,
+                      "x": 18,
+                      "type": "metric",
+                      "properties": {
+                        "title": "System errors write (count)",
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "stat": "Sum",
+                        "period": 60,
+                        "yAxis": {
+                          "left": {
+                            "showUnits": false
+                          }
+                        },
+                        "metrics": [
+                          [
+                              "AWS/DynamoDB",
+                              "SystemErrors",
+                              "TableName",
+                              "${PlayerGameSavesTableName}",
+                              "Operation",
+                              "PutItem",
+                            {
+                              "color": "#0073BB"
+                            }
+                          ],
+                          [
+                              "...",
+                              "UpdateItem",
+                            {
+                              "color": "#FF7F0F"
+                            }
+                          ],
+                          [
+                              "...",
+                              "DeleteItem",
+                            {
+                              "color": "#2DA02D"
+                            }
+                          ],
+                          [
+                              "...",
+                              "BatchWriteItem",
+                            {
+                              "color": "#9468BD"
+                            }
+                          ]
+                        ],
+                        "start": "-PT3H",
+                        "end": "P0D"
+                      }
+                    }
+                  ]
+                }
+              - env: !Ref GameKitEnv
+                gamename: !Ref GameKitGameName

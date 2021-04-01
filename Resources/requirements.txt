@@ -1,0 +1,10 @@
+# AWS Lambda - Python 3.7 Runtime: https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
+# Use the latest version, because the AWS Lambda runtimes are upgraded over time.
+boto3
+botocore
+
+# Crypto Lambda Layer:
+cryptography == 3.4.7
+
+# Image Processing Lambda Layer:
+Pillow == 8.3.1

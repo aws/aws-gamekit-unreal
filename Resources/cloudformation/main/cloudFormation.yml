@@ -1,0 +1,205 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+Description: (GAMEKIT1001) - The AWS CloudFormation template for AWS GameKit Main Stack. v1.0.0
+Parameters:
+  GameKitEnv:
+    Type: String
+  GameKitBase36AwsAccountId:
+    Type: String
+  GameKitShortAwsRegionCode:
+    Type: String
+  GameKitApiName:
+    Type: String
+  GameKitGameName:
+    Type: String
+  EmptyS3BucketOnDeleteLambdaName:
+    Type: String
+  EmptyS3BucketOnDeleteLambdaRoleName:
+    Type: String
+  ApiGatewayLoggingRoleName:
+    Type: String
+  CWLoggingEnabled:
+    Type: String
+    AllowedValues: ["true", "false"]
+  LambdaFunctionsReplacementID:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+Conditions:
+  IsCWLoggingEnabled: !Equals
+    - !Ref CWLoggingEnabled
+    - true
+  IsCWLoggingDisabled: !Not
+    - !Equals
+      - !Ref CWLoggingEnabled
+      - true
+
+Resources:
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Ref GameKitApiName
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+  ApiGwAccountConfig:
+    Type: "AWS::ApiGateway::Account"
+    Condition: IsCWLoggingEnabled
+    Properties:
+      CloudWatchRoleArn: !GetAtt "ApiGatewayLoggingRole.Arn"
+  ApiGatewayLoggingRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Ref ApiGatewayLoggingRoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "apigateway.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs'
+  RootGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !GetAtt RestApi.RootResourceId
+      RestApiId: !Ref RestApi
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+  RestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: RootGetMethod
+    Properties:
+      RestApiId: !Ref RestApi
+      Description: !Sub '${GameKitEnv} Deployment'
+  MainDeploymentStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: !Ref GameKitEnv
+      Description: !Sub '${GameKitEnv} Stage'
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref RestApiDeployment
+      MethodSettings:
+        - LoggingLevel: !If [IsCWLoggingEnabled, 'INFO', 'OFF']
+          DataTraceEnabled: false
+          HttpMethod: '*'
+          ResourcePath: '/*'
+    DependsOn: ApiGatewayLoggingRole
+  ApiGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: IsCWLoggingEnabled
+    Properties:
+      LogGroupName: !Sub 'API-Gateway-Execution-Logs_${RestApi}/${GameKitEnv}'
+      RetentionInDays: 30
+  MainRequestValidator:
+    Type: AWS::ApiGateway::RequestValidator
+    Properties:
+      RestApiId: !Ref RestApi
+      ValidateRequestParameters: true
+      ValidateRequestBody: true
+  UsagePlan:
+    Type: 'AWS::ApiGateway::UsagePlan'
+    DependsOn:
+      - MainDeploymentStage
+    Properties:
+      ApiStages:
+        - ApiId: !Ref RestApi
+          Stage:  !Ref MainDeploymentStage
+      Description: Default usage plan
+      Quota:
+        Limit: 50000
+        Period: DAY
+      Throttle:
+        BurstLimit: 200
+        RateLimit: 100
+      UsagePlanName: Default
+  EmptyS3BucketOnDeleteLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: "Empties the provided S3 bucket during stack deletion. Should be paired with a custom CloudFormation resource."
+      FunctionName: !Sub '${GameKitApiName}_${EmptyS3BucketOnDeleteLambdaName}'
+      Handler: index.lambda_handler
+      Role: !GetAtt EmptyS3BucketOnDeleteLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/main/EmptyS3BucketOnDelete.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 900
+      TracingConfig:
+        Mode: Active
+  EmptyS3BucketOnDeleteLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: EmptyS3BucketOnDeleteLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${EmptyS3BucketOnDeleteLambda}'
+  EmptyS3BucketOnDeleteLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref EmptyS3BucketOnDeleteLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:DeleteObject
+                  - s3:DeleteObjectVersion
+                  - s3:GetBucketVersioning
+                  - s3:List*
+                Resource:
+                  - !Sub 'arn:aws:s3:::gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-*'
+                  - !Sub 'arn:aws:s3:::gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-*/*'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+
+Outputs:
+  MainRestApi:
+    Description: The Main GameKit RestApi
+    Value:
+      Ref: RestApi
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}:${AWS::Region}:MainRestApi'
+  MainRestApiRootResourceId:
+    Description: The Main GameKit RestApi RootResourceId
+    Value: !GetAtt RestApi.RootResourceId
+    Export:
+      Name:
+        'Fn::Sub': '${AWS::StackName}:${AWS::Region}:MainRestApiRootResourceId'
+  MainCWLoggingEnabled:
+    Description: If CloudWatch logging is enabled
+    Value: !Ref CWLoggingEnabled
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:MainCWLoggingEnabled'
+  MainRequestValidator:
+    Description: APIGW Request validator
+    Value: !Ref MainRequestValidator
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:MainRequestValidator'
+  EmptyS3BucketOnDeleteLambda:
+    Description: A function which empties the provided S3 bucket during stack deletion when paired with a custom CloudFormation resource
+    Value: !GetAtt EmptyS3BucketOnDeleteLambda.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:${EmptyS3BucketOnDeleteLambdaName}'
+  EmptyS3BucketOnDeleteRole:
+    Description: The IAM role ARN used to run the EmptyS3BucketOnDelete lambda function
+    Value: !GetAtt EmptyS3BucketOnDeleteLambdaRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:EmptyS3BucketOnDeleteRole'

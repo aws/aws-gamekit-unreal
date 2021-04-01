@@ -1,0 +1,24 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+GameKitEnv:
+  value: {{AWSGAMEKIT::SYS::ENV}}
+GameKitBase36AwsAccountId:
+  value: {{AWSGAMEKIT::SYS::BASE36AWSACCOUNTID}}
+GameKitShortAwsRegionCode:
+  value: {{AWSGAMEKIT::SYS::SHORTREGIONCODE}}
+GameKitApiName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_main"
+GameKitGameName:
+  value: {{AWSGAMEKIT::SYS::GAMENAME}}
+EmptyS3BucketOnDeleteLambdaName:
+  value: "EmptyS3BucketOnDelete"
+EmptyS3BucketOnDeleteLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_EmptyS3BucketOnDeleteRole"
+ApiGatewayLoggingRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_ApiGatewayLoggingRole"
+CWLoggingEnabled:
+  value: true
+LambdaFunctionsReplacementID:
+  value: "GAMEKIT_LAMBDA_FUNCTIONS_REPLACEMENT_ID_main_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"

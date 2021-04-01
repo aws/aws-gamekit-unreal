@@ -1,0 +1,45 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "EngineVersion": "4.26.0",
+  "VersionName": "1.0",
+  "FriendlyName": "AWS GameKit",
+  "Description": "",
+  "Category": "AWS",
+  "CreatedBy": "Amazon Web Services Game Tech",
+  "CreatedByURL": "https://aws.amazon.com/gametech/",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "CanContainContent": true,
+  "IsBetaVersion": false,
+  "IsExperimentalVersion": false,
+  "Installed": true,
+  "ExplicitlyLoaded": false,
+  "Modules": [
+    {
+      "Name": "AwsGameKitCore",
+      "Type": "Runtime",
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [
+        "Win64"
+      ]
+    },
+    {
+      "Name": "AwsGameKitRuntime",
+      "Type": "Runtime",
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [
+        "Win64"
+      ]
+    },
+    {
+      "Name": "AwsGameKitEditor",
+      "Type": "Editor",
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [
+        "Win64"
+      ]
+    }
+  ]
+}

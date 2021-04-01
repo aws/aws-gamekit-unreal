@@ -1,0 +1,9 @@
+# Exclude the PyCharm configuration repository:
+.idea
+
+# Exclude the Python virtual environment:
+venv/
+
+# Exclude compiled bytecode:
+*.pyc
+**__pycache__

@@ -1,0 +1,1419 @@
+---
+ # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ # SPDX-License-Identifier: Apache-2.0
+ 
+Description: (GAMEKIT1002D) - The AWS CloudFormation template for the AWS GameKit Identity v1.0.0 Cloudwatch Dashboard
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  UserPool:
+    Type: String
+  UserPoolClientId:
+    Type: String
+Resources:    
+  CloudWatchDashboard:
+    Type: 'AWS::CloudWatch::Dashboard'
+    Properties:
+      DashboardName: !Join [ '-', ['GameKit', '{{AWSGAMEKIT::SYS::GAMENAME}}', '{{AWSGAMEKIT::SYS::ENV}}', !Ref "AWS::Region", 'IdentityAndAuthentication'] ]
+      DashboardBody: !Sub
+        - >
+          {
+            "widgets": [{
+                "height": 3,
+                "width": 24,
+                "y": 0,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "# GameKit Identity Feature [button:GameKit CloudFormation Template](https://${AWS::Region}.console.aws.amazon.com/cloudformation/home?region=${AWS::Region}#/stacks/stackinfo?filteringStatus=active&filteringText=&viewNested=true&hideStacks=false&stackId=arn%3Aaws%3Acloudformation%3A${AWS::Region}%3A${AWS::AccountId}3Astack%2Fgamekit-${env}-${gamename}-identity%2Fb9edb5a0-ee2b-11eb-b850-021971c5004f) \nThe GameKit Identity Feature enables game developers to register all game players, assign unique player identifiers, and use these IDs to manage access for a range of other game features. With this GameKit game feature, players can register and sign in with either a valid email/password or by using their Facebook account. \n \n"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 135,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    ["AWS/ApiGateway", "Count", "ApiName", "gamekit_${env}_${gamename}_main", "Stage", "${env}", {
+                      "label": "Requests"
+                    }],
+                    [".", "5XXError", ".", ".", ".", ".", {
+                      "label": "Errors",
+                      "yAxis": "left"
+                    }]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "title": "API Gateway Requests",
+                  "period": 60,
+                  "stat": "Sum",
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "label": ""
+                    }
+                  }
+                }
+              },
+              {
+                "height": 6,
+                "width": 24,
+                "y": 129,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## API Gateway [button:Take Me To API Gateway](https://${AWS::Region}.console.aws.amazon.com/apigateway/main/apis?region=${AWS::Region})\nAuthentication requests made by GameKit clients pass through API Gateway to back-end Lambda functions. These metrics indicate the relative performance and volume of requests being handled by API Gateway\n## Metrics\n#### API Gateway Requests\nThis chart shows the total number of Identity requests made to API Gateway\n#### Request Latency\nThis chart shows the average response time for each request made to API Gateway"
+                }
+              },
+              {
+                "height": 6,
+                "width": 24,
+                "y": 142,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Cognito\nCognito manages all users created via email / password, as well as handling federated login calls to supported 3rd party identity providers such as Facebook, Amazon and Google.\n[button:Take Me To Cognito](https://${AWS::Region}.console.aws.amazon.com/cognito/users/?region=${AWS::Region}#/pool/${userPool})\n## Metrics\n#### Authentication\nThis chart shows the total number of authentication-related events\n#### Security\nThis chart shows the number of security-related events"
+                }
+              },
+              {
+                "height": 6,
+                "width": 24,
+                "y": 4,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Lambda [button:Take Me To Lambda](https://${AWS::Region}.console.aws.amazon.com/lambda/home?r&region=${AWS::Region}#/functions?f0=true&n0=false&op=and&v0=gamekit)\nThe GameKit Identity Feature uses Lambda functions as handlers for processing Identity and Authentication requests. \n## Metrics\n#### Function Invocations\nThis chart shows the total number of times each Lambda function has been invoked.\n#### Function Errors\nThis chart shows the total number of errors logged for each Lambda function. Check [CloudWatch Logs](https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?#logsV2:log-groups$3FlogGroupNameFilter$3D$252Faws$252Flambda$252Fgamekit) for more information\n#### Average Function Duration\nThis chart shows the average execution time for each Lambda function\n#### P99 Function Duration\nThis chart shows the P99 execution time for each Lambda function\n#### Total Function Execution Time\nThis chart shows the total amount of execution time for each Lambda function"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 148,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    ["AWS/Cognito", "SignUpSuccesses", "UserPool", "${userPool}", "UserPoolClient", "${userPoolClientId}", {
+                      "label": "Signup Successes"
+                    }],
+                    [".", "SignInSuccesses", ".", ".", ".", ".", {
+                      "label": "Signin Successes"
+                    }],
+                    [".", "FederationSuccesses", ".", ".", "IdentityProvider", "Facebook", "UserPoolClient", "${userPoolClientId}", {
+                      "label": "Facebook Federation Successes"
+                    }],
+                    [".", "TokenRefreshSuccesses", ".", ".", "UserPoolClient", "${userPoolClientId}"]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "showUnits": false,
+                      "label": "Count"
+                    }
+                  },
+                  "title": "Authentication"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 161,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    ["AWS/DynamoDB", "SuccessfulRequestLatency", "TableName", "gamekit_${env}_${gamename}_identities", "Operation", "UpdateItem", {
+                      "label": "Update Item"
+                    }],
+                    ["...", "GetItem", {
+                      "label": "Get Item"
+                    }],
+                    ["...", "PutItem", {
+                      "label": "Put Item"
+                    }],
+                    ["...", "Scan"],
+                    ["...", "Query"]
+                  ],
+                  "view": "timeSeries",
+                  "region": "${AWS::Region}",
+                  "stacked": false,
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "showUnits": false,
+                      "label": "Milliseconds"
+                    }
+                  },
+                  "title": "Request Latency",
+                  "period": 300,
+                  "stat": "Average"
+                }
+              },
+              {
+                "height": 6,
+                "width": 24,
+                "y": 155,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## DynamoDB\nDynamoDB stores the internal GameKit User ID, referencing it back to a Cognito User ID. This allows players to link multiple providers to a single GameKit account.\n[button:Take Me To DynamoDB](https://${AWS::Region}.console.aws.amazon.com/dynamodbv2/home?#tables)\n## Metrics\n#### Request Latency\nThis chart shows the average response time for each request made to DynamoDB\n#### Read / Write Capacity Consumed\nThis chart shows the % of DynamoDB Read and Write Capacity units that have been consumed. For more information, [click here](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html#HowItWorks.ProvisionedThroughput.Manual)"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 161,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    [{
+                      "expression": "100*(m1/m4)",
+                      "label": "Consumed Read Capacity Units",
+                      "id": "e1",
+                      "region": "${AWS::Region}",
+                      "stat": "Average",
+                      "period": 300
+                    }],
+                    [{
+                      "expression": "100*(m2/m3)",
+                      "label": "Consumed Write Capacity Units",
+                      "id": "e2",
+                      "region": "${AWS::Region}",
+                      "stat": "Average",
+                      "period": 300
+                    }],
+                    ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "gamekit_${env}_${gamename}_identities", {
+                      "id": "m1",
+                      "visible": false
+                    }],
+                    [".", "ConsumedWriteCapacityUnits", ".", ".", {
+                      "id": "m2",
+                      "visible": false
+                    }],
+                    [".", "ProvisionedWriteCapacityUnits", ".", ".", {
+                      "id": "m3",
+                      "visible": false
+                    }],
+                    [".", "ProvisionedReadCapacityUnits", ".", ".", {
+                      "id": "m4",
+                      "visible": false
+                    }]
+                  ],
+                  "view": "timeSeries",
+                  "region": "${AWS::Region}",
+                  "stacked": false,
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "label": "Percent",
+                      "showUnits": false,
+                      "max": 100
+                    }
+                  },
+                  "title": "Capacity Consumed",
+                  "period": 300,
+                  "stat": "Average",
+                  "setPeriodToTimeRange": true
+                }
+              },
+              {
+                "height": 1,
+                "width": 18,
+                "y": 3,
+                "x": 2,
+                "type": "text",
+                "properties": {
+                  "markdown": "---"
+                }
+              },
+              {
+                "height": 1,
+                "width": 18,
+                "y": 141,
+                "x": 2,
+                "type": "text",
+                "properties": {
+                  "markdown": "---"
+                }
+              },
+              {
+                "height": 1,
+                "width": 18,
+                "y": 154,
+                "x": 2,
+                "type": "text",
+                "properties": {
+                  "markdown": "---"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 148,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    ["AWS/Cognito", "NoRisk", "UserPoolId", "${userPool}", "Operation", "SignIn", {
+                      "label": "Sign In (No Risk)"
+                    }],
+                    ["...", "SignUp", {
+                      "label": "Sign Up (No Risk)"
+                    }]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 60,
+                  "yAxis": {
+                    "left": {
+                      "min": 0,
+                      "showUnits": false,
+                      "label": "Count"
+                    }
+                  },
+                  "title": "Security"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 135,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "metrics": [
+                    ["AWS/ApiGateway", "Latency", "ApiName", "gamekit_${env}_${gamename}_main", "Stage", "${env}", {
+                      "region": "${AWS::Region}"
+                    }],
+                    ["...", {
+                      "region": "${AWS::Region}",
+                      "stat": "p99"
+                    }],
+                    ["...", {
+                      "region": "${AWS::Region}",
+                      "stat": "p50"
+                    }]
+                  ],
+                  "view": "timeSeries",
+                  "stacked": false,
+                  "region": "{$region}",
+                  "title": "Request Latency",
+                  "period": 60,
+                  "stat": "Average",
+                  "yAxis": {
+                    "left": {
+                      "min": 0
+                    }
+                  }
+                }
+              },
+              {
+                "height": 1,
+                "width": 18,
+                "y": 128,
+                "x": 2,
+                "type": "text",
+                "properties": {
+                  "markdown": "---"
+                }
+              },
+              {
+                "height": 1,
+                "width": 24,
+                "y": 7,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Function: GetUser"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 8,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "gamekit_${env}_${gamename}_GetUser",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Invocations"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 8,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_GetUser",
+                      {
+                        "stat": "Average",
+                        "label": "Average",
+                        "color": "#2ca02c"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "stat": "p90",
+                        "label": "p90",
+                        "color": "#ffbb78"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p95",
+                        "color": "#ff7f0e",
+                        "stat": "p95"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p99",
+                        "stat": "p99"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 14,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Errors", "FunctionName", "gamekit_${env}_${gamename}_GetUser",
+                      {
+                        "id": "errors",
+                        "stat": "Sum",
+                        "color": "#d13212"
+                      }
+                    ],
+                    [
+                        ".",
+                        "Invocations",
+                        ".",
+                        ".",
+                      {
+                        "id": "invocations",
+                        "stat": "Sum",
+                        "visible": false
+                      }
+                    ],
+                    [
+                      {
+                        "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                        "label": "Success rate (%)",
+                        "id": "availability",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Error count and success rate (%)",
+                  "yAxis": {
+                    "right": {
+                      "max": 100
+                    }
+                  }
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 14,
+                "x": 8,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Throttles", "FunctionName", "gamekit_${env}_${gamename}_GetUser",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 14,
+                "x": 16,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "gamekit_${env}_${gamename}_GetUser",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Concurrent Executions"
+                }
+              },
+
+              {
+                "height": 1,
+                "width": 24,
+                "y": 21,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Function: CognitoPreSignUp"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 22,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "gamekit_${env}_${gamename}_CognitoPreSignUp",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Invocations"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 22,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_CognitoPreSignUp",
+                      {
+                        "stat": "Average",
+                        "label": "Average",
+                        "color": "#2ca02c"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "stat": "p90",
+                        "label": "p90",
+                        "color": "#ffbb78"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p95",
+                        "color": "#ff7f0e",
+                        "stat": "p95"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p99",
+                        "stat": "p99"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 28,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Errors", "FunctionName", "gamekit_${env}_${gamename}_CognitoPreSignUp",
+                      {
+                        "id": "errors",
+                        "stat": "Sum",
+                        "color": "#d13212"
+                      }
+                    ],
+                    [
+                        ".",
+                        "Invocations",
+                        ".",
+                        ".",
+                      {
+                        "id": "invocations",
+                        "stat": "Sum",
+                        "visible": false
+                      }
+                    ],
+                    [
+                      {
+                        "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                        "label": "Success rate (%)",
+                        "id": "availability",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Error count and success rate (%)",
+                  "yAxis": {
+                    "right": {
+                      "max": 100
+                    }
+                  }
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 28,
+                "x": 8,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Throttles", "FunctionName", "gamekit_${env}_${gamename}_CognitoPreSignUp",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 28,
+                "x": 16,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "gamekit_${env}_${gamename}_CognitoPreSignUp",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Concurrent Executions"
+                }
+              },
+
+              {
+                "height": 1,
+                "width": 24,
+                "y": 35,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Function: CognitoPostConfirmation"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 36,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "gamekit_${env}_${gamename}_CognitoPostConfirmation",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Invocations"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 36,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_CognitoPostConfirmation",
+                      {
+                        "stat": "Average",
+                        "label": "Average",
+                        "color": "#2ca02c"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "stat": "p90",
+                        "label": "p90",
+                        "color": "#ffbb78"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p95",
+                        "color": "#ff7f0e",
+                        "stat": "p95"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p99",
+                        "stat": "p99"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 42,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Errors", "FunctionName", "gamekit_${env}_${gamename}_CognitoPostConfirmation",
+                      {
+                        "id": "errors",
+                        "stat": "Sum",
+                        "color": "#d13212"
+                      }
+                    ],
+                    [
+                        ".",
+                        "Invocations",
+                        ".",
+                        ".",
+                      {
+                        "id": "invocations",
+                        "stat": "Sum",
+                        "visible": false
+                      }
+                    ],
+                    [
+                      {
+                        "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                        "label": "Success rate (%)",
+                        "id": "availability",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Error count and success rate (%)",
+                  "yAxis": {
+                    "right": {
+                      "max": 100
+                    }
+                  }
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 42,
+                "x": 8,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Throttles", "FunctionName", "gamekit_${env}_${gamename}_CognitoPostConfirmation",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 42,
+                "x": 16,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "gamekit_${env}_${gamename}_CognitoPostConfirmation",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Concurrent Executions"
+                }
+              },
+
+              {
+                "height": 1,
+                "width": 24,
+                "y": 49,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Function: GenerateFacebookLoginUrl"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 50,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "gamekit_${env}_${gamename}_GenerateFacebookLoginUrl",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Invocations"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 50,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_GenerateFacebookLoginUrl",
+                      {
+                        "stat": "Average",
+                        "label": "Average",
+                        "color": "#2ca02c"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "stat": "p90",
+                        "label": "p90",
+                        "color": "#ffbb78"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p95",
+                        "color": "#ff7f0e",
+                        "stat": "p95"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p99",
+                        "stat": "p99"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 56,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Errors", "FunctionName", "gamekit_${env}_${gamename}_GenerateFacebookLoginUrl",
+                      {
+                        "id": "errors",
+                        "stat": "Sum",
+                        "color": "#d13212"
+                      }
+                    ],
+                    [
+                        ".",
+                        "Invocations",
+                        ".",
+                        ".",
+                      {
+                        "id": "invocations",
+                        "stat": "Sum",
+                        "visible": false
+                      }
+                    ],
+                    [
+                      {
+                        "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                        "label": "Success rate (%)",
+                        "id": "availability",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Error count and success rate (%)",
+                  "yAxis": {
+                    "right": {
+                      "max": 100
+                    }
+                  }
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 56,
+                "x": 8,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Throttles", "FunctionName", "gamekit_${env}_${gamename}_GenerateFacebookLoginUrl",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 56,
+                "x": 16,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "gamekit_${env}_${gamename}_GenerateFacebookLoginUrl",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Concurrent Executions"
+                }
+              },
+
+              {
+                "height": 1,
+                "width": 24,
+                "y": 63,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Function: CognitoFbCallbackHandler"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 64,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "gamekit_${env}_${gamename}_CognitoFbCallbackHandler",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Invocations"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 64,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_CognitoFbCallbackHandler",
+                      {
+                        "stat": "Average",
+                        "label": "Average",
+                        "color": "#2ca02c"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "stat": "p90",
+                        "label": "p90",
+                        "color": "#ffbb78"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p95",
+                        "color": "#ff7f0e",
+                        "stat": "p95"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p99",
+                        "stat": "p99"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 70,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Errors", "FunctionName", "gamekit_${env}_${gamename}_CognitoFbCallbackHandler",
+                      {
+                        "id": "errors",
+                        "stat": "Sum",
+                        "color": "#d13212"
+                      }
+                    ],
+                    [
+                        ".",
+                        "Invocations",
+                        ".",
+                        ".",
+                      {
+                        "id": "invocations",
+                        "stat": "Sum",
+                        "visible": false
+                      }
+                    ],
+                    [
+                      {
+                        "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                        "label": "Success rate (%)",
+                        "id": "availability",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Error count and success rate (%)",
+                  "yAxis": {
+                    "right": {
+                      "max": 100
+                    }
+                  }
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 70,
+                "x": 8,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Throttles", "FunctionName", "gamekit_${env}_${gamename}_CognitoFbCallbackHandler",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 70,
+                "x": 16,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "gamekit_${env}_${gamename}_CognitoFbCallbackHandler",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Concurrent Executions"
+                }
+              },
+
+              {
+                "height": 1,
+                "width": 24,
+                "y": 77,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Function: PollFacebookLoginCompletion"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 78,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "gamekit_${env}_${gamename}_PollFacebookLoginCompletion",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Invocations"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 78,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_PollFacebookLoginCompletion",
+                      {
+                        "stat": "Average",
+                        "label": "Average",
+                        "color": "#2ca02c"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "stat": "p90",
+                        "label": "p90",
+                        "color": "#ffbb78"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p95",
+                        "color": "#ff7f0e",
+                        "stat": "p95"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p99",
+                        "stat": "p99"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 84,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Errors", "FunctionName", "gamekit_${env}_${gamename}_PollFacebookLoginCompletion",
+                      {
+                        "id": "errors",
+                        "stat": "Sum",
+                        "color": "#d13212"
+                      }
+                    ],
+                    [
+                        ".",
+                        "Invocations",
+                        ".",
+                        ".",
+                      {
+                        "id": "invocations",
+                        "stat": "Sum",
+                        "visible": false
+                      }
+                    ],
+                    [
+                      {
+                        "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                        "label": "Success rate (%)",
+                        "id": "availability",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Error count and success rate (%)",
+                  "yAxis": {
+                    "right": {
+                      "max": 100
+                    }
+                  }
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 84,
+                "x": 8,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Throttles", "FunctionName", "gamekit_${env}_${gamename}_PollFacebookLoginCompletion",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 84,
+                "x": 16,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "gamekit_${env}_${gamename}_PollFacebookLoginCompletion",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Concurrent Executions"
+                }
+              },
+
+              {
+                "height": 1,
+                "width": 24,
+                "y": 91,
+                "x": 0,
+                "type": "text",
+                "properties": {
+                  "markdown": "## Function: RetrieveFacebookTokens"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 92,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "gamekit_${env}_${gamename}_RetrieveFacebookTokens",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Invocations"
+                }
+              },
+              {
+                "height": 6,
+                "width": 12,
+                "y": 92,
+                "x": 12,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Duration", "FunctionName", "gamekit_${env}_${gamename}_RetrieveFacebookTokens",
+                      {
+                        "stat": "Average",
+                        "label": "Average",
+                        "color": "#2ca02c"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "stat": "p90",
+                        "label": "p90",
+                        "color": "#ffbb78"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p95",
+                        "color": "#ff7f0e",
+                        "stat": "p95"
+                      }
+                    ],
+                    [
+                        "...",
+                      {
+                        "label": "p99",
+                        "stat": "p99"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 98,
+                "x": 0,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Errors", "FunctionName", "gamekit_${env}_${gamename}_RetrieveFacebookTokens",
+                      {
+                        "id": "errors",
+                        "stat": "Sum",
+                        "color": "#d13212"
+                      }
+                    ],
+                    [
+                        ".",
+                        "Invocations",
+                        ".",
+                        ".",
+                      {
+                        "id": "invocations",
+                        "stat": "Sum",
+                        "visible": false
+                      }
+                    ],
+                    [
+                      {
+                        "expression": "100 - 100 * errors / MAX([errors, invocations])",
+                        "label": "Success rate (%)",
+                        "id": "availability",
+                        "yAxis": "right"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Error count and success rate (%)",
+                  "yAxis": {
+                    "right": {
+                      "max": 100
+                    }
+                  }
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 98,
+                "x": 8,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "Throttles", "FunctionName", "gamekit_${env}_${gamename}_RetrieveFacebookTokens",
+                      {
+                        "stat": "Sum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}"
+                }
+              },
+              {
+                "height": 6,
+                "width": 8,
+                "y": 98,
+                "x": 16,
+                "type": "metric",
+                "properties": {
+                  "period": 60,
+                  "metrics": [
+                    ["AWS/Lambda", "ConcurrentExecutions", "FunctionName", "gamekit_${env}_${gamename}_RetrieveFacebookTokens",
+                      {
+                        "stat": "Maximum"
+                      }
+                    ]
+                  ],
+                  "region": "${AWS::Region}",
+                  "title": "Concurrent Executions"
+                }
+              }
+            ]
+          }
+        - env: '{{AWSGAMEKIT::SYS::ENV}}'
+          gamename: '{{AWSGAMEKIT::SYS::GAMENAME}}'
+          userPool: !Sub ${UserPool}
+          userPoolClientId: !Sub ${UserPoolClientId}

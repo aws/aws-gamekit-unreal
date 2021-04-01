@@ -1,0 +1,54 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+GameKitEnv:
+  value: {{AWSGAMEKIT::SYS::ENV}}
+GameKitGameName:
+  value: {{AWSGAMEKIT::SYS::GAMENAME}}
+GameKitBase36AwsAccountId:
+  value: {{AWSGAMEKIT::SYS::BASE36AWSACCOUNTID}}
+GameKitShortAwsRegionCode:
+  value: {{AWSGAMEKIT::SYS::SHORTREGIONCODE}}
+IdentityTableName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_identities"
+CognitoLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_CognitoLambdaRole"
+CognitoPreSignUpLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_CognitoPreSignUp"
+CognitoPostConfirmationLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_CognitoPostConfirmation"
+CognitoFbCallbackHandlerLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_CognitoFbCallbackHandler"
+GenerateFacebookLoginUrlLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GenerateFacebookLoginUrl"
+PollFacebookLoginCompletionLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_PollFacebookLoginCompletion"
+RetrieveFacebookTokensLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_RetrieveFacebookTokens"
+CognitoUserPoolName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_UserPool"
+CognitoIdentityPoolName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_IdentityPool"
+CognitoIdentityPoolAuthRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GameKitIdentityPoolAuthRole"
+CognitoIdentityPoolUnauthRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GameKitIdentityPoolUnauthRole"
+FacebookClientId:
+  value: "{{AWSGAMEKIT::VARS::facebook_client_id}}"
+FacebookEnabled:
+  value: "{{AWSGAMEKIT::VARS::is_facebook_enabled}}"
+GetUserLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GetUser"
+GetUserLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GetUserLambdaRole"
+GameKitKmsPolicyName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_KmsPolicy"
+DetailedLambdaLoggingDisabled:
+  value: false
+LambdaFunctionsReplacementID:
+  value: "GAMEKIT_LAMBDA_FUNCTIONS_REPLACEMENT_ID_identity_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCommonLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CommonLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCryptoLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CryptoLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"

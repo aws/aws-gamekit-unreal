@@ -1,0 +1,711 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+Description: (GAMEKIT1005) - The AWS CloudFormation template for AWS GameKit Game State Cloud Saving. v1.0.0
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  GameKitEnv:
+    Type: String
+  GameKitGameName:
+    Type: String
+  GameKitBase36AwsAccountId:
+    Type: String
+  GameKitShortAwsRegionCode:
+    Type: String
+  PrefixName:
+    Type: String
+  LambdaPrefixName:
+    Type: String
+  LambdaRolePrefix:
+    Type: String
+  ApiPrefixName:
+    Type: String
+  MaxSaveSlotsPerPlayer:
+    Default: '10'
+    MinValue: '0'
+    Description: "The maximum number of cloud save slots each player may use for the game."
+    Type: Number
+  S3AccessLoggingEnabled:
+    Type: String
+    AllowedValues: ["true", "false"]
+  DetailedLambdaLoggingDisabled:
+    Type: String
+    AllowedValues: ["true", "false"]
+  LambdaFunctionsReplacementID:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  LambdaLayerARNCommonLambdaLayer:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+Conditions:
+  IsS3AccessLoggingEnabled: !Equals
+    - !Ref S3AccessLoggingEnabled
+    - "true"
+  IsS3AccessLoggingDisabled: !Not
+    - !Equals
+      - !Ref S3AccessLoggingEnabled
+      - "true"
+Resources:
+  PlayerGameSavesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${PrefixName}_player_gamesaves
+      AttributeDefinitions:
+        - AttributeName: player_id
+          AttributeType: S
+        - AttributeName: slot_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_id
+          KeyType: HASH
+        - AttributeName: slot_name
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  PlayerGameSavesBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: UpdateSlotMetadataLambdaInvokeByS3Permission
+    Properties:
+      BucketName: !Sub 'gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-player-gamesaves'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LoggingConfiguration:
+        !If
+          - IsS3AccessLoggingEnabled
+          -
+            DestinationBucketName: !Ref PlayerGameSavesLoggingBucket
+            LogFilePrefix: 'player-gamesaves-logs'
+          - !Ref "AWS::NoValue"
+      LifecycleConfiguration:
+        # Save money by transitioning save files to the Infrequent Access storage tier 30 days after the save file is created.
+        # Note: When a save file is overwritten, it's timer is reset and it stays in Standard storage for another 30 days.
+        # For more info about S3 storage classes, see: https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html
+        Rules:
+          - Id: 'TransitionToInfrequentAccess'
+            Status: Enabled
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt UpdateSlotMetadataLambda.Arn
+
+  PlayerGameSavesLoggingBucket:
+    Type: AWS::S3::Bucket
+    Condition: IsS3AccessLoggingEnabled
+    Properties:
+      BucketName: !Sub 'gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-player-gamesaves-log'
+      AccessControl: LogDeliveryWrite
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  EmptyGameSavesBucketOnDelete:
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:EmptyS3BucketOnDelete'
+      bucket_name: !Ref PlayerGameSavesBucket
+
+  EmptyGameSavesLoggingBucketOnDelete:
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:EmptyS3BucketOnDelete'
+      bucket_name: !Ref PlayerGameSavesLoggingBucket
+
+  GameSavingApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApiRootResourceId'
+      PathPart: game_saving
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+  GameSavingSlotNameApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref GameSavingApiResource
+      PathPart: '{slot_name}'
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+  QueryStringAndHeaderValidator:
+    Type: AWS::ApiGateway::RequestValidator
+    Properties:
+      Name: !Sub ${LambdaPrefixName}_QueryStringAndHeaderValidator
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+      ValidateRequestBody: false
+      ValidateRequestParameters: true
+  CognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: GameSaving-Cognito-Authorizer
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.authorization
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+      ProviderARNs:
+        - !ImportValue
+          'Fn::Sub': 'gamekit-{{AWSGAMEKIT::SYS::ENV}}-{{AWSGAMEKIT::SYS::GAMENAME}}-identity:${AWS::Region}:GameKitUserPoolArn'
+
+  GeneratePreSignedGetURLLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${LambdaPrefixName}_GeneratePreSignedGetURL
+      Description: "Generate a pre-signed URL for downloading the player's specified save slot data from S3."
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          GAMESAVES_BUCKET_NAME: !Ref PlayerGameSavesBucket
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Role: !GetAtt GeneratePreSignedGetURLLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/gamesaving/GeneratePreSignedGetURL.${LambdaFunctionsReplacementID}.zip'
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+  GeneratePreSignedGetURLLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GeneratePreSignedGetURLLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GeneratePreSignedGetURLLambda}'
+  GeneratePreSignedGetURLLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${LambdaRolePrefix}_GeneratePreSignedGetLambda
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub '${PlayerGameSavesBucket.Arn}'
+                  - !Sub '${PlayerGameSavesBucket.Arn}/*'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+  GeneratePreSignedGetURLApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref GameSavingSlotNameApiResource
+      PathPart: download_url
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+  GeneratePreSignedGetURLApiResourceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref GeneratePreSignedGetURLApiResource
+      RequestParameters:
+        method.request.header.authorization: true
+        method.request.path.slot_name: true
+        method.request.querystring.time_to_live: false
+      RequestValidatorId: !Ref QueryStringAndHeaderValidator
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GeneratePreSignedGetURLLambda.Arn}/invocations'
+  GeneratePreSignedGetURLLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GeneratePreSignedGetURLLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+
+  GeneratePreSignedPutURLLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${LambdaPrefixName}_GeneratePreSignedPutURL
+      Description: "Generate a pre-signed URL that allows a save file to be uploaded to S3 in the player's specified save slot. If the slot is new, will verify the MAX_CLOUD_SAVE_SLOTS_PER_PLAYER has not been reached."
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          MAX_SAVE_SLOTS_PER_PLAYER: !Ref MaxSaveSlotsPerPlayer
+          GAMESAVES_TABLE_NAME: !Ref PlayerGameSavesTable
+          GAMESAVES_BUCKET_NAME: !Ref PlayerGameSavesBucket
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Role: !GetAtt GeneratePreSignedPutURLLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/gamesaving/GeneratePreSignedPutURL.${LambdaFunctionsReplacementID}.zip'
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+  GeneratePreSignedPutURLLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GeneratePreSignedPutURLLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GeneratePreSignedPutURLLambda}'
+  GeneratePreSignedPutURLLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${LambdaRolePrefix}_GeneratePreSignedPutLambda
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub '${PlayerGameSavesBucket.Arn}'
+                  - !Sub '${PlayerGameSavesBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:Query'
+                  - 'dynamodb:GetItem'
+                Resource:
+                  - !Sub '${PlayerGameSavesTable.Arn}'
+                  - !Sub '${PlayerGameSavesTable.Arn}/index/*'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+  GeneratePreSignedPutURLApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref GameSavingSlotNameApiResource
+      PathPart: upload_url
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+  GeneratePreSignedPutURLApiResourceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref GeneratePreSignedPutURLApiResource
+      RequestParameters:
+        method.request.header.authorization: true
+        method.request.header.hash: true
+        method.request.header.last_modified_epoch_time: true
+        method.request.header.metadata: false
+        method.request.path.slot_name: true
+        method.request.querystring.time_to_live: false
+        method.request.querystring.consistent_read: false
+      RequestValidatorId: !Ref QueryStringAndHeaderValidator
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GeneratePreSignedPutURLLambda.Arn}/invocations'
+  GeneratePreSignedPutURLLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GeneratePreSignedPutURLLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+
+  UpdateSlotMetadataLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${LambdaPrefixName}_UpdateSlotMetadata
+      Description: "Called by an S3 event trigger whenever a save file is uploaded to S3. Creates/updates the save slot's metadata in the DynamoDB table."
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          GAMESAVES_TABLE_NAME: !Ref PlayerGameSavesTable
+          # Note: The bucket name below has to be hardcoded to avoid a circular dependency with the S3 bucket's event configuration.
+          #       Both this Lambda and the S3 Bucket reference each other, so one of them has to be hardcoded instead of using !Ref.
+          GAMESAVES_BUCKET_NAME: !Sub 'gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-player-gamesaves'
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Role: !GetAtt UpdateSlotMetadataLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/gamesaving/UpdateSlotMetadata.${LambdaFunctionsReplacementID}.zip'
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+  UpdateSlotMetadataLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: UpdateSlotMetadataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${UpdateSlotMetadataLambda}'
+  UpdateSlotMetadataLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${LambdaRolePrefix}_UpdateSlotMetadataLambda
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                Resource:
+                  # Note: The bucket name below has to be hardcoded to avoid a circular dependency with the S3 bucket's event configuration.
+                  #       Both this Role's Lambda and the S3 Bucket reference each other, so one of them has to be hardcoded instead of using !Ref.
+                  - !Sub 'arn:aws:s3:::gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-player-gamesaves/*'
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                Resource:
+                  - !Sub '${PlayerGameSavesTable.Arn}'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+  UpdateSlotMetadataLambdaInvokeByS3Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Principal: s3.amazonaws.com
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt UpdateSlotMetadataLambda.Arn
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub 'arn:aws:s3:::gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-player-gamesaves'
+
+  DeleteSaveSlotLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${LambdaPrefixName}_DeleteSaveSlot
+      Description: "Remove the slot item from DynamoDB and the slot object from S3."
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          GAMESAVES_TABLE_NAME: !Ref PlayerGameSavesTable
+          GAMESAVES_BUCKET_NAME: !Ref PlayerGameSavesBucket
+          AWS_ACCOUNT_ID: !Sub '${AWS::AccountId}'
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Role: !GetAtt DeleteSaveSlotLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/gamesaving/DeleteSaveSlot.${LambdaFunctionsReplacementID}.zip'
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+  DeleteSaveSlotLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: DeleteSaveSlotLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${DeleteSaveSlotLambda}'
+  DeleteSaveSlotLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${LambdaRolePrefix}_DeleteSaveSlotLambda
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:DeleteItem'
+                Resource:
+                  - !Sub '${PlayerGameSavesTable.Arn}'
+              - Effect: Allow
+                Action:
+                  - 's3:DeleteObject'
+                Resource:
+                  - !Sub '${PlayerGameSavesBucket.Arn}/*'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+  DeleteSaveSlotApiResourceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: DELETE
+      ResourceId: !Ref GameSavingSlotNameApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteSaveSlotLambda.Arn}/invocations'
+      RequestParameters:
+        method.request.header.authorization: true
+        method.request.path.slot_name: true
+  DeleteSaveSlotLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt DeleteSaveSlotLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+
+  GetSlotMetadataLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${LambdaPrefixName}_GetSlotMetadata
+      Description: "Retrieve metadata for the player's named save slot, or an empty dictionary if no metadata is found."
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          GAMESAVES_TABLE_NAME: !Ref PlayerGameSavesTable
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Role: !GetAtt GetSlotMetadataLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/gamesaving/GetSlotMetadata.${LambdaFunctionsReplacementID}.zip'
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+  GetSlotMetadataLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GetSlotMetadataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GetSlotMetadataLambda}'
+  GetSlotMetadataLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${LambdaRolePrefix}_GetSlotMetadataLambda
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                Resource:
+                  - !Sub '${PlayerGameSavesTable.Arn}'
+                  - !Sub '${PlayerGameSavesTable.Arn}/index/*'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+  GetSlotMetadataApiResourceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref GameSavingSlotNameApiResource
+      RequestParameters:
+        method.request.header.authorization: true
+        method.request.path.slot_name: true
+        method.request.querystring.consistent_read: false
+      RequestValidatorId: !Ref QueryStringAndHeaderValidator
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetSlotMetadataLambda.Arn}/invocations'
+  GetSlotMetadataLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GetSlotMetadataLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+
+  GetAllSlotsMetadataLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${LambdaPrefixName}_GetAllSlotsMetadata
+      Description: "Retrieve metadata for all of the player's save slots, or an empty list if no metadata is found."
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          GAMESAVES_TABLE_NAME: !Ref PlayerGameSavesTable
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Role: !GetAtt GetAllSlotsMetadataLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/gamesaving/GetAllSlotsMetadata.${LambdaFunctionsReplacementID}.zip'
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+  GetAllSlotsMetadataLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GetAllSlotsMetadataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GetAllSlotsMetadataLambda}'
+  GetAllSlotsMetadataLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${LambdaRolePrefix}_GetAllSlotsMetadataLambda
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:Query'
+                Resource:
+                  - !Sub '${PlayerGameSavesTable.Arn}'
+                  - !Sub '${PlayerGameSavesTable.Arn}/index/*'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+  GameSavingApiResourceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref GameSavingApiResource
+      RequestParameters:
+        method.request.header.authorization: true
+        method.request.querystring.page_size: false
+        method.request.querystring.start_key: false
+        method.request.querystring.consistent_read: false
+      RequestValidatorId: !Ref QueryStringAndHeaderValidator
+      RestApiId: !ImportValue
+        'Fn::Sub': '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetAllSlotsMetadataLambda.Arn}/invocations'
+  GetAllSlotsMetadataLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GetAllSlotsMetadataLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+  GameSavingCloudWatchDashboardStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: !Sub https://do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}.s3.${AWS::Region}.amazonaws.com/cloudformation/gamesaving/dashboard.yml
+      TimeoutInMinutes: '15'
+      Parameters:
+        GameKitEnv: !Sub ${GameKitEnv}
+        GameKitGameName: !Sub ${GameKitGameName}
+        PlayerGameSavesTableName: !Sub ${PrefixName}_player_gamesaves
+        DeleteSaveSlotLambdaName: !Sub ${LambdaPrefixName}_DeleteSaveSlot
+        GeneratePreSignedGetURLLambdaName: !Sub ${LambdaPrefixName}_GeneratePreSignedGetURL
+        GeneratePreSignedPutURLLambdaName: !Sub ${LambdaPrefixName}_GeneratePreSignedPutURL
+        GetAllSlotsMetadataLambdaName: !Sub ${LambdaPrefixName}_GetAllSlotsMetadata
+        GetSlotMetadataLambdaName: !Sub ${LambdaPrefixName}_GetSlotMetadata
+        UpdateSlotMetadataLambdaName: !Sub ${LambdaPrefixName}_UpdateSlotMetadata
+Outputs:
+  GameSavingApiGatewayBaseUrl:
+    Description: "The API Gateway base url for the Game State Cloud Saving feature."
+    Value: !Sub
+      - 'https://${MainRestApi}.execute-api.${AWS::Region}.amazonaws.com/${GameKitEnv}/game_saving'
+      - MainRestApi:
+          Fn::ImportValue:
+            !Sub '${ApiPrefixName}:${AWS::Region}:MainRestApi'
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:GameStateCloudSavingApiGatewayBaseUrl'
