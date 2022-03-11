@@ -1,0 +1,1043 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+Description: (GAMEKIT1002) - The AWS CloudFormation template for AWS GameKit Identity and Authentication. v1.0.0
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  GameKitEnv:
+    Type: String
+  GameKitGameName:
+    Type: String
+  GameKitBase36AwsAccountId:
+    Type: String
+  GameKitShortAwsRegionCode:
+    Type: String
+  IdentityTableName:
+    Type: String
+  CognitoLambdaRoleName:
+    Type: String
+  CognitoPreSignUpLambdaName:
+    Type: String
+  CognitoPostConfirmationLambdaName:
+    Type: String
+  CognitoFbCallbackHandlerLambdaName:
+    Type: String
+  GenerateFacebookLoginUrlLambdaName:
+    Type: String
+  PollFacebookLoginCompletionLambdaName:
+    Type: String
+  RetrieveFacebookTokensLambdaName:
+    Type: String
+  GetUserLambdaName:
+    Type: String
+  GetUserLambdaRoleName:
+    Type: String
+  GameKitKmsPolicyName:
+    Type: String
+  CognitoUserPoolName:
+    Type: String
+  CognitoIdentityPoolName:
+    Type: String
+  CognitoIdentityPoolAuthRoleName:
+    Type: String
+  CognitoIdentityPoolUnauthRoleName:
+    Type: String
+  FacebookClientId:
+    Type: String
+  FacebookEnabled:
+    Type: String
+  CloudWatchDashboardEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  IdentityProvidersCognitoOnly:
+    Type: CommaDelimitedList
+    Default: "COGNITO"
+  IdentityProvidersWithFacebook:
+    Type: CommaDelimitedList
+    Default: "COGNITO, Facebook"
+  DetailedLambdaLoggingDisabled:
+    Type: String
+    AllowedValues: [ "true", "false" ]
+  LambdaFunctionsReplacementID:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  LambdaLayerARNCommonLambdaLayer:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  LambdaLayerARNCryptoLambdaLayer:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  UseThirdPartyIdentityProvider:
+    Type: String
+    AllowedValues: [ "true", "false" ]
+  JwksThirdPartyUri:
+    Type: String
+  JwksRefreshLambdaName:
+    Type: String
+  JwksRefreshLambdaRoleName:
+    Type: String
+  TokenAuthorizerSecretName:
+    Type: String
+  TokenAuthorizerUserIdClaimName:
+    Type: String
+  TokenAuthorizerCacheTtlInSeconds:
+    Type: String
+  JwksScheduledRefreshEventRuleName:
+    Type: String
+  JwksScheduledRefreshExpression:
+    Type: String
+Conditions:
+  IsUsingThirdPartyIdentityProvider: !Equals
+    - !Ref UseThirdPartyIdentityProvider
+    - true
+  IsCloudWatchDashboardEnabled: !Equals
+    - !Ref CloudWatchDashboardEnabled
+    - true
+  IsUsingCognito: !Not
+    - !Equals
+      - !Ref UseThirdPartyIdentityProvider
+      - true
+  IsFacebookEnabled: !And
+    - !Equals
+      - !Ref FacebookEnabled
+      - true
+    - Condition: IsUsingCognito
+  IsFacebookDisabled: !Not
+    - !Equals
+      - !Ref FacebookEnabled
+      - true
+Resources:
+  GameKitIdentities:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: gk_user_id
+          AttributeType: S
+        - AttributeName: facebook_external_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: gk_user_id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      TableName: !Ref IdentityTableName
+      GlobalSecondaryIndexes:
+        - IndexName: gidx_facebook_external_id
+          KeySchema:
+            - AttributeName: facebook_external_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+  GameKitKmsPolicy:
+    Condition: IsFacebookEnabled
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey'
+              - 'kms:GenerateDataKeyWithoutPlaintext'
+            Resource: !GetAtt GameKitKmsCmk.Arn
+      Roles:
+        - !Ref CognitoLambdaRole
+      PolicyName: !Ref GameKitKmsPolicyName
+  CognitoLambdaRole:
+    Condition: IsUsingCognito
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref CognitoLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:BatchGetItem'
+                Resource:
+                  - !Sub '${GameKitIdentities.Arn}'
+                  - !Sub '${GameKitIdentities.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - 'cognito-idp:ListUsers'
+                  - 'cognito-idp:AdminGetUser'
+                  - 'cognito-idp:GetUser'
+                Resource: !GetAtt GameKitUserPool.Arn
+              - Effect: Allow
+                Action:
+                  - 'kms:List*'
+                  - 'kms:Describe*'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:DeleteObject'
+                Resource: !Sub 'arn:aws:s3:::do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}/*'
+              - Effect: Allow
+                Action:
+                  - 's3:ListBucket'
+                Resource: !Sub 'arn:aws:s3:::do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+  CognitoPostConfirmationLambda:
+    Condition: IsUsingCognito
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref CognitoPostConfirmationLambdaName
+      Description: Handler for Cognito PostConfirmation
+      Handler: index.lambda_handler
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          IDENTITY_TABLE_NAME: !Ref IdentityTableName
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/CognitoPostConfirmation.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 5
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  CognitoPostConfirmationLambdaLogGroup:
+    Condition: IsUsingCognito
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: CognitoPostConfirmationLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${CognitoPostConfirmationLambda}'
+  CognitoPostConfirmationLambdaPermission:
+    Condition: IsUsingCognito
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt CognitoPostConfirmationLambda.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt GameKitUserPool.Arn
+  CognitoPreSignUpLambda:
+    Condition: IsUsingCognito
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref CognitoPreSignUpLambdaName
+      Description: Handler for Cognito Pre-Signup
+      Handler: index.lambda_handler
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          IDENTITY_TABLE_NAME: !Ref IdentityTableName
+          USER_POOL_ID: !Ref GameKitUserPool
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/CognitoPreSignUp.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 5
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  CognitoPreSignUpLambdaLogGroup:
+    Condition: IsUsingCognito
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: CognitoPreSignUpLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${CognitoPreSignUpLambda}'
+  CognitoPreSignUpLambdaPermission:
+    Condition: IsUsingCognito
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt CognitoPreSignUpLambda.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt GameKitUserPool.Arn
+  CognitoFbCallbackHandlerLambda:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref CognitoFbCallbackHandlerLambdaName
+      Description: Facebook Callback Handler
+      Handler: index.lambda_handler
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          BOOTSTRAP_BUCKET: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+          GAMEKIT_KMS_KEY_ID: !Ref GameKitKmsCmk
+          GAMEKIT_KMS_KEY_ARN: !GetAtt GameKitKmsCmk.Arn
+          IDENTITY_TABLE_NAME: !Ref IdentityTableName
+          USER_POOL_ID: !Ref GameKitUserPool
+          APP_CLIENT_ID: !Ref GameKitUserPoolClient
+          USER_POOL_DOMAIN: !Sub
+            - 'https://gamekit-${GameKitEnv}-${GameKitGameName}-${DomainStackUUID}.auth.${AWS::Region}.amazoncognito.com'
+            - 'DomainStackUUID': !Select [ "4", !Split [ "-", !Select [ "2", !Split [ "/" , !Sub '${AWS::StackId}' ] ] ] ]
+          REDIRECT_URI: !Sub
+            - 'https://${MainRestApi}.execute-api.${AWS::Region}.amazonaws.com/${GameKitEnv}/identity/fbtokenresp'
+            - MainRestApi:
+                Fn::ImportValue:
+                  !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/CognitoFbCallbackHandler.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      MemorySize: 3538
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCryptoLambdaLayer
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  CognitoFbCallbackHandlerLambdaLogGroup:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: CognitoFbCallbackHandlerLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${CognitoFbCallbackHandlerLambda}'
+  CognitoFbCallbackHandlerLambdaPermission:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt CognitoFbCallbackHandlerLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  GenerateFacebookLoginUrlLambda:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref GenerateFacebookLoginUrlLambdaName
+      Description: Handler for returning a Facebook login url
+      Handler: index.lambda_handler
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          GAMEKIT_KMS_KEY_ID: !Ref GameKitKmsCmk
+          GAMEKIT_KMS_KEY_ARN: !GetAtt GameKitKmsCmk.Arn
+          APP_CLIENT_ID: !Ref GameKitUserPoolClient
+          COGNITO_BASE_URL: !Sub 'https://${GameKitUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+          REDIRECT_URI: !Sub
+            - 'https://${MainRestApi}.execute-api.${AWS::Region}.amazonaws.com/${GameKitEnv}/identity/fbtokenresp'
+            - MainRestApi:
+                Fn::ImportValue:
+                  !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/GenerateFacebookLoginUrl.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCryptoLambdaLayer
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  GenerateFacebookLoginUrlLambdaLogGroup:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: GenerateFacebookLoginUrlLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GenerateFacebookLoginUrlLambda}'
+  GenerateFacebookLoginUrlLambdaPermission:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GenerateFacebookLoginUrlLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  PollFacebookLoginCompletionLambda:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref PollFacebookLoginCompletionLambdaName
+      Description: Handler for polling the completion of a Facebook login
+      Handler: index.lambda_handler
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          BOOTSTRAP_BUCKET: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/PollFacebookLoginCompletion.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  PollFacebookLoginCompletionLambdaLogGroup:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: PollFacebookLoginCompletionLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${PollFacebookLoginCompletionLambda}'
+  PollFacebookLoginCompletionLambdaPermission:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt PollFacebookLoginCompletionLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  RetrieveFacebookTokensLambda:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref RetrieveFacebookTokensLambdaName
+      Description: Handler for retrieving Facebook tokens
+      Handler: index.lambda_handler
+      Role: !GetAtt CognitoLambdaRole.Arn
+      Environment:
+        Variables:
+          BOOTSTRAP_BUCKET: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+          GAMEKIT_KMS_KEY_ID: !Ref GameKitKmsCmk
+          GAMEKIT_KMS_KEY_ARN: !GetAtt GameKitKmsCmk.Arn
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/RetrieveFacebookTokens.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCryptoLambdaLayer
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  RetrieveFacebookTokensLambdaLogGroup:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: RetrieveFacebookTokensLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${RetrieveFacebookTokensLambda}'
+  RetrieveFacebookTokensLambdaPermission:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt RetrieveFacebookTokensLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  JwksRefreshLambdaRole:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref JwksRefreshLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:DescribeSecret'
+                  - 'secretsmanager:GetSecretValue'
+                  - 'secretsmanager:CreateSecret'
+                  - 'secretsmanager:PutSecretValue'
+                  - 'secretsmanager:DeleteSecret'
+                  - 'secretsmanager:UpdateSecret'
+                Resource:
+                  - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${TokenAuthorizerSecretName}*'
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:ListSecrets'
+                Resource: '*'
+  JwksRefreshLambda:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref JwksRefreshLambdaName
+      Description: Lambda function for retrieving the latest JSON Web Key Set (JWKS) and storing it in Secrets Manager
+      Handler: index.lambda_handler
+      Role: !GetAtt JwksRefreshLambdaRole.Arn
+      Environment:
+        Variables:
+          JWKS_SECRET_NAME: !Ref TokenAuthorizerSecretName
+          JWKS_THIRDPARTY_URI: !Ref JwksThirdPartyUri
+          DEPLOYMENT_STAGE: !Ref GameKitEnv
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/JwksRefresh.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+        - !Ref LambdaLayerARNCryptoLambdaLayer
+  JwksRefreshLambdaLogGroup:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: JwksRefreshLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${JwksRefreshLambda}'
+  JwksScheduledRefreshEventRule:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Ref JwksScheduledRefreshEventRuleName
+      Description: "EventRule for periodically retrieving the latest JSON Web Key Set (JWKS) and storing it in Secrets Manager"
+      ScheduleExpression: !Ref JwksScheduledRefreshExpression
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt JwksRefreshLambda.Arn
+          Id: JwksRefreshLambda
+  JwksScheduledRefreshEventRuleInvokeLambdaPermission:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref JwksRefreshLambda
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt JwksScheduledRefreshEventRule.Arn
+  GameKitUserPool:
+    Type: 'AWS::Cognito::UserPool'
+    Properties:
+      UserPoolName: !Ref CognitoUserPoolName
+      Schema:
+        - Name: gk_user_id
+          AttributeDataType: String
+          Mutable: false
+          Required: false
+        - Name: gk_user_hash_key
+          AttributeDataType: String
+          Mutable: false
+          Required: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      AutoVerifiedAttributes:
+        - email
+      AliasAttributes:
+        - preferred_username
+      LambdaConfig:
+        PostConfirmation: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${CognitoPostConfirmationLambdaName}'
+        PreSignUp: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${CognitoPreSignUpLambdaName}'
+  FacebookUserPoolIdentityProvider:
+    Condition: IsFacebookEnabled
+    Type: 'AWS::Cognito::UserPoolIdentityProvider'
+    Properties:
+      UserPoolId: !Ref GameKitUserPool
+      ProviderName: Facebook
+      ProviderDetails:
+        client_id: !Ref FacebookClientId
+        client_secret: '{{resolve:secretsmanager:gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_facebook_client_secret}}'
+        authorize_scopes: 'public_profile, email'
+        api_version: v6.0
+      ProviderType: Facebook
+      AttributeMapping:
+        email: email
+        id: username
+  GameKitUserPoolClient:
+    Type: 'AWS::Cognito::UserPoolClient'
+    Properties:
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      ClientName: gamekit_pool_client
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      IdTokenValidity: 1
+      PreventUserExistenceErrors: ENABLED
+      ReadAttributes:
+        - email
+        - preferred_username
+        - custom:gk_user_id
+      RefreshTokenValidity: 30
+      UserPoolId: !Ref GameKitUserPool
+      SupportedIdentityProviders: !If
+        - IsFacebookEnabled
+        - - !Ref FacebookUserPoolIdentityProvider
+          - COGNITO
+        - - COGNITO
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+        - aws.cognito.signin.user.admin
+        - !Sub '${GameKitResourceServer}/gamekit.identity'
+        - !Sub '${GameKitResourceServer}/gamekit.achievements'
+        - !Sub '${GameKitResourceServer}/gamekit.cloudsaving'
+        - !Sub '${GameKitResourceServer}/gamekit.gamedata'
+      CallbackURLs:
+        - !Sub 'https://${GameKitUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+        - !Sub
+          - 'https://${MainRestApi}.execute-api.${AWS::Region}.amazonaws.com/${GameKitEnv}/identity/fbtokenresp'
+          - MainRestApi:
+              Fn::ImportValue:
+                !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  GameKitResourceServer:
+    Type: 'AWS::Cognito::UserPoolResourceServer'
+    Properties:
+      Identifier: com.aws.gamekit
+      Name: GameKitResources
+      Scopes:
+        - ScopeDescription: Identity
+          ScopeName: gamekit.identity
+        - ScopeDescription: Achievements
+          ScopeName: gamekit.achievements
+        - ScopeDescription: Cloud Saving
+          ScopeName: gamekit.cloudsaving
+        - ScopeDescription: User Gameplay Data
+          ScopeName: gamekit.gamedata
+      UserPoolId: !Ref GameKitUserPool
+  GameKitUserPoolDomain:
+    Type: 'AWS::Cognito::UserPoolDomain'
+    Properties:
+      UserPoolId: !Ref GameKitUserPool
+      # Append the last 12 digits of the already randomized StackId to prevent issues with duplicate domain names that would occur on duplicate GAMEKITGameNames.
+      # Sample Stack ID : arn:aws:cloudformation:us-west-2:123456789012:stack/teststack/51af3dc0-da77-11e4-872e-1234567db123
+      Domain: !Sub
+        - 'gamekit-${GameKitEnv}-${GameKitGameName}-${DomainStackUUID}'
+        - 'DomainStackUUID': !Select [ "4", !Split [ "-", !Select [ "2", !Split [ "/" , !Sub '${AWS::StackId}' ] ] ] ]
+  GameKitIdentityPool:
+    Type: 'AWS::Cognito::IdentityPool'
+    Properties:
+      IdentityPoolName: !Ref CognitoIdentityPoolName
+      AllowUnauthenticatedIdentities: true
+      CognitoIdentityProviders:
+        - ClientId: !Ref GameKitUserPoolClient
+          ProviderName: !GetAtt GameKitUserPool.ProviderName
+      SupportedLoginProviders: !If
+        - IsFacebookEnabled
+        - graph.facebook.com: !Ref FacebookClientId
+        - !Ref AWS::NoValue
+  CognitoGameKitIdentityPoolAuthRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: 'sts:AssumeRoleWithWebIdentity'
+            Condition:
+              StringEquals:
+                'cognito-identity.amazonaws.com:aud': !Ref GameKitIdentityPool
+              'ForAnyValue:StringLike':
+                'cognito-identity.amazonaws.com:amr': authenticated
+      Policies:
+        - PolicyName: Cognito_GameKitIdentityPoolAuth_Role
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'mobileanalytics:PutEvents'
+                  - 'cognito-sync:*'
+                  - 'cognito-identity:*'
+                Resource: '*'
+      RoleName: !Ref CognitoIdentityPoolAuthRoleName
+  CognitoGameKitIdentityPoolUnauthRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: 'sts:AssumeRoleWithWebIdentity'
+            Condition:
+              StringEquals:
+                'cognito-identity.amazonaws.com:aud': !Ref GameKitIdentityPool
+              'ForAnyValue:StringLike':
+                'cognito-identity.amazonaws.com:amr': unauthenticated
+      Policies:
+        - PolicyName: Cognito_GameKitIdentityPool_Unauth_Role
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'mobileanalytics:PutEvents'
+                  - 'cognito-sync:*'
+                Resource: '*'
+      RoleName: !Ref CognitoIdentityPoolUnauthRoleName
+  IdentityPoolRoleAttachment:
+    Type: 'AWS::Cognito::IdentityPoolRoleAttachment'
+    Properties:
+      IdentityPoolId: !Ref GameKitIdentityPool
+      Roles:
+        authenticated: !GetAtt CognitoGameKitIdentityPoolAuthRole.Arn
+        unauthenticated: !GetAtt CognitoGameKitIdentityPoolUnauthRole.Arn
+  IdentityApiResource:
+    Condition: IsUsingCognito
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApiRootResourceId'
+      PathPart: identity
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  FbCallbackHandlerApiResource:
+    Condition: IsFacebookEnabled
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref IdentityApiResource
+      PathPart: fbtokenresp
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  FbCallbackHandlerApiResourceGetMethod:
+    Condition: IsFacebookEnabled
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref FbCallbackHandlerApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CognitoFbCallbackHandlerLambda.Arn}/invocations'
+  CognitoAuthorizer:
+    Condition: IsUsingCognito
+    Type: 'AWS::ApiGateway::Authorizer'
+    Properties:
+      Name: Identity-Cognito-Authorizer
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.authorization
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      ProviderARNs:
+        - !GetAtt GameKitUserPool.Arn
+  GetUserResource:
+    Condition: IsUsingCognito
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      PathPart: getuser
+      ParentId: !Ref IdentityApiResource
+  GetUserMethod:
+    Condition: IsUsingCognito
+    Type: 'AWS::ApiGateway::Method'
+    DependsOn: GetUserLambdaHandler
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref GetUserResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref CognitoAuthorizer
+      RequestParameters:
+        method.request.header.authorization: true
+      RequestValidatorId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRequestValidator'
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetUserLambdaHandler.Arn}/invocations'
+  GetUserLambdaHandler:
+    Condition: IsUsingCognito
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: Handler for GetUser call
+      Handler: index.lambda_handler
+      FunctionName: !Ref GetUserLambdaName
+      Environment:
+        Variables:
+          IDENTITY_TABLE_NAME: !Ref IdentityTableName
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/CognitoGetUser.${LambdaFunctionsReplacementID}.zip'
+      Role: !GetAtt GetUserLambdaRole.Arn
+      Runtime: python3.7
+      Timeout: 25
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  GetUserLambdaLogGroup:
+    Condition: IsUsingCognito
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: GetUserLambdaHandler
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GetUserLambdaHandler}'
+  GetUserHandlerLambdaPermission:
+    Condition: IsUsingCognito
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GetUserLambdaHandler.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  GetUserLambdaRole:
+    Condition: IsUsingCognito
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref GetUserLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:Query'
+                Resource:
+                  - !Sub '${GameKitIdentities.Arn}'
+                  - !Sub '${GameKitIdentities.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - 'cognito-idp:GetUser'
+                Resource: !GetAtt GameKitUserPool.Arn
+  FbLoginUrlHandlerApiResource:
+    Condition: IsFacebookEnabled
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref IdentityApiResource
+      PathPart: fbloginurl
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  FbLoginUrlHandlerApiResourcePostMethod:
+    Condition: IsFacebookEnabled
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      ResourceId: !Ref FbLoginUrlHandlerApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GenerateFacebookLoginUrlLambda.Arn}/invocations'
+  FbCompletionLoginHandlerApiResource:
+    Condition: IsFacebookEnabled
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref IdentityApiResource
+      PathPart: fblogincheck
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  FbCompletionLoginHandlerApiResourcePostMethod:
+    Condition: IsFacebookEnabled
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      ResourceId: !Ref FbCompletionLoginHandlerApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PollFacebookLoginCompletionLambda.Arn}/invocations'
+  FbRetrieveTokensHandlerApiResource:
+    Condition: IsFacebookEnabled
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref IdentityApiResource
+      PathPart: fbtokens
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  FbRetrieveTokensHandlerApiResourcePostMethod:
+    Condition: IsFacebookEnabled
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      ResourceId: !Ref FbRetrieveTokensHandlerApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RetrieveFacebookTokensLambda.Arn}/invocations'
+  GameKitKmsCmk:
+    Condition: IsFacebookEnabled
+    Type: AWS::KMS::Key
+    DependsOn: CognitoLambdaRole
+    Properties:
+      Description: GameKit symmetric CMK
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: kms:*
+            Resource: '*'
+          - Sid: Allow use of the key
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/${CognitoLambdaRoleName}
+            Action:
+              - kms:List*
+              - kms:Describe*
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey
+              - kms:GenerateDataKeyWithoutPlaintext
+            Resource: '*'
+  GameKitKmsCmkAlias:
+    Condition: IsFacebookEnabled
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/gamekit/${GameKitEnv}-${GameKitGameName}-key
+      TargetKeyId: !Ref GameKitKmsCmk
+  CloudWatchDashboardStack:
+    Condition: IsCloudWatchDashboardEnabled
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: !Sub https://do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}.s3.${AWS::Region}.amazonaws.com/cloudformation/identity/dashboard.yml
+      TimeoutInMinutes: '15'
+      Parameters:
+        UserPool: !Ref GameKitUserPool
+        UserPoolClientId: !Ref GameKitUserPoolClient
+
+Outputs:
+  IdentityApiGatewayBaseUrl:
+    Condition: IsUsingCognito
+    Description: The API Gateway base url for the identity feature
+    Value: !Sub
+      - 'https://${MainRestApi}.execute-api.${AWS::Region}.amazonaws.com/${GameKitEnv}/identity'
+      - MainRestApi:
+          Fn::ImportValue:
+            !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:IdentityApiGatewayBaseUrl'
+  GameKitUserPoolClientId:
+    Description: The Gognito User Pool client id
+    Value: !Ref GameKitUserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:GameKitUserPoolClientId'
+  IdentityRegion:
+    Description: Region
+    Value: !Sub '${AWS::Region}'
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:IdentityRegion'
+  GameKitUserPoolArn:
+    Description: The UserPool ARN
+    Value: !GetAtt GameKitUserPool.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:GameKitUserPoolArn'
+  IdentityTableArn:
+    Description: The Identity DynamoDB Table ARN
+    Value: !GetAtt GameKitIdentities.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:IdentityTableArn'
+  IdentityTableName:
+    Description: The Identity DynamoDB Table Name
+    Value: !Ref IdentityTableName
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:IdentityTableName'
+  UseThirdPartyIdentityProvider:
+    Description: Set if using third party identity provider
+    Value: !Ref UseThirdPartyIdentityProvider
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:UseThirdPartyIdentityProvider'
+  TokenAuthorizerSecretName:
+    Description: The JSON Web Key Set (JWKS) Secret Name
+    Value: !Ref TokenAuthorizerSecretName
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:TokenAuthorizerSecretName'
+  TokenAuthorizerUserIdClaimName:
+    Description: The JWT claim to map to player_id
+    Value: !Ref TokenAuthorizerUserIdClaimName
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:TokenAuthorizerUserIdClaimName'
+  TokenAuthorizerCacheTtlInSeconds:
+    Description: Number of Seconds to Cache Authorization Results
+    Value: !Ref TokenAuthorizerCacheTtlInSeconds
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:TokenAuthorizerCacheTtlInSeconds'

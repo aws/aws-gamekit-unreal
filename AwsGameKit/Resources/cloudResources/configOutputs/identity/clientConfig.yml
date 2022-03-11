@@ -1,0 +1,11 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Key/value pairs to be added to the game's client_config.yml file
+# These values will be replaced at the end of create/update of
+# the feature's CloudFormation stack.
+
+user_pool_client_id: "{{AWSGAMEKIT::CFNOUTPUT::GameKitUserPoolClientId}}"
+identity_api_gateway_base_url: "{{AWSGAMEKIT::CFNOUTPUT::IdentityApiGatewayBaseUrl}}"
+identity_region: "{{AWSGAMEKIT::CFNOUTPUT::IdentityRegion}}"

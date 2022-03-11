@@ -1,0 +1,46 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+GameKitEnv:
+  value: {{AWSGAMEKIT::SYS::ENV}}
+GameKitGameName:
+  value: {{AWSGAMEKIT::SYS::GAMENAME}}
+GameKitBase36AwsAccountId:
+  value: {{AWSGAMEKIT::SYS::BASE36AWSACCOUNTID}}
+GameKitShortAwsRegionCode:
+  value: {{AWSGAMEKIT::SYS::SHORTREGIONCODE}}
+PrefixName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}"
+LambdaPrefixName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GameSaving"
+LambdaRolePrefix:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}"
+ApiPrefixName:
+  value: "gamekit-{{AWSGAMEKIT::SYS::ENV}}-{{AWSGAMEKIT::SYS::GAMENAME}}-main"
+CloudWatchDashboardEnabled:
+  value: "{{AWSGAMEKIT::VARS::cloudwatch_dashboard_enabled}}"
+MaxSaveSlotsPerPlayer:
+  value: "{{AWSGAMEKIT::VARS::max_save_slots_per_player}}"
+S3AccessLoggingEnabled:
+  value: "true"
+DetailedLambdaLoggingDisabled:
+  value: false
+LambdaFunctionsReplacementID:
+  value: "GAMEKIT_LAMBDA_FUNCTIONS_REPLACEMENT_ID_gamesaving_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCommonLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CommonLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCryptoLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CryptoLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+IdentityLambdaFunctionsReplacementID:
+  value: "GAMEKIT_LAMBDA_FUNCTIONS_REPLACEMENT_ID_identity_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+GameSavingTokenAuthorizerLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GameSavingTokenAuthorizerLambdaRole"
+GameSavingTokenAuthorizerLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GameSavingTokenAuthorizer"
+
+# Advanced Usage:
+# Set UseThirdPartyIdentityProvider to true to use your own identity provider.
+# The value of this setting should match the identity feature's UseThirdPartyIdentityProvider value in identity/parameters.yml.
+UseThirdPartyIdentityProvider:
+  value: false

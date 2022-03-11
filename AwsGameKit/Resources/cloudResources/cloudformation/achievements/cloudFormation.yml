@@ -1,0 +1,1040 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+Description: (GAMEKIT1003) - The AWS CloudFormation template for AWS GameKit Achievements. v1.0.0
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  GameKitEnv:
+    Type: String
+  GameKitGameName:
+    Type: String
+  GameKitBase36AwsAccountId:
+    Type: String
+  GameKitShortAwsRegionCode:
+    Type: String
+  AchievementsTableName:
+    Type: String
+  PlayerAchievementsTableName:
+    Type: String
+  AchievementsAdminLambdaRoleName:
+    Type: String
+  AchievementsLambdaRoleName:
+    Type: String
+  AdminAddAchievementsLambdaName:
+    Type: String
+  AdminGetAchievementsLambdaName:
+    Type: String
+  AdminDeleteAchievementsLambdaName:
+    Type: String
+  UpdateAchievementsLambdaName:
+    Type: String
+  GetAchievementsLambdaName:
+    Type: String
+  GetAchievementLambdaName:
+    Type: String
+  ResizeIconLambdaName:
+    Type: String
+  AchievementsAdminInvokePolicyName:
+    Type: String
+  AchievementsAdminInvokeRoleName:
+    Type: String
+  AchievementsTokenAuthorizerLambdaRoleName:
+    Type: String
+  AchievementsTokenAuthorizerLambdaName:
+    Type: String
+  CloudWatchDashboardEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  S3AccessLoggingEnabled:
+    Type: String
+    AllowedValues: [ "true", "false" ]
+  DetailedLambdaLoggingDisabled:
+    Type: String
+    AllowedValues: [ "true", "false" ]
+  LambdaFunctionsReplacementID:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  LambdaLayerARNCommonLambdaLayer:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  LambdaLayerARNImageProcessingLambdaLayer:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  LambdaLayerARNCryptoLambdaLayer:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  IdentityLambdaFunctionsReplacementID:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  UseThirdPartyIdentityProvider:
+    Type: String
+    AllowedValues: [ "true", "false" ]
+Conditions:
+  IsCloudWatchDashboardEnabled: !Equals
+    - !Ref CloudWatchDashboardEnabled
+    - true
+  IsS3AccessLoggingEnabled: !Equals
+    - !Ref S3AccessLoggingEnabled
+    - true
+  IsS3AccessLoggingDisabled: !Not
+    - !Equals
+      - !Ref S3AccessLoggingEnabled
+      - true
+  IsUsingThirdPartyIdentityProvider: !Equals
+    - !Ref UseThirdPartyIdentityProvider
+    - true
+  IsNotUsingThirdPartyIdentityProvider: !Not
+    - !Equals
+      - !Ref UseThirdPartyIdentityProvider
+      - true
+Resources:
+  GameKitAchievements:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: achievement_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: achievement_id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TableName: !Ref AchievementsTableName
+  GameKitPlayerAchievements:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: player_id
+          AttributeType: S
+        - AttributeName: achievement_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_id
+          KeyType: HASH
+        - AttributeName: achievement_id
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TableName: !Ref PlayerAchievementsTableName
+  AchievementsAdminLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref AchievementsAdminLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:BatchWriteItem'
+                  - 'dynamodb:DeleteItem'
+                Resource:
+                  - !Sub '${GameKitAchievements.Arn}'
+                  - !Sub '${GameKitAchievements.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - 's3:DeleteObject'
+                Resource:
+                  - !Sub '${AchievementsBucket.Arn}/icons/*'
+  AchievementsLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref AchievementsLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:BatchGetItem'
+                Resource:
+                  - !Sub '${GameKitAchievements.Arn}'
+                  - !Sub '${GameKitAchievements.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:BatchWriteItem'
+                Resource:
+                  - !Sub '${GameKitPlayerAchievements.Arn}'
+                  - !Sub '${GameKitPlayerAchievements.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:DeleteObject'
+                Resource:
+                  - !Sub 'arn:aws:s3:::gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-achievements/*'
+              - !If
+                - IsNotUsingThirdPartyIdentityProvider
+                -
+                  Effect: Allow
+                  Action:
+                    - 'dynamodb:Query'
+                  Resource:
+                    - !Sub
+                      - '${IdentityTableArn}/index/*'
+                      - IdentityTableArn:
+                          Fn::ImportValue:
+                            !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableArn'
+                - !Ref AWS::NoValue
+  AchievementsTokenAuthorizerLambdaRole:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref AchievementsTokenAuthorizerLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:DescribeSecret'
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Sub
+                  - 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${TokenAuthorizerSecretName}*'
+                  - TokenAuthorizerSecretName:
+                      Fn::ImportValue:
+                        !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:TokenAuthorizerSecretName'
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:ListSecrets'
+                Resource: '*'
+  AdminAddAchievementsLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref AdminAddAchievementsLambdaName
+      Description: Admin function to add new achievements
+      Handler: index.lambda_handler
+      Role: !GetAtt AchievementsAdminLambdaRole.Arn
+      Environment:
+        Variables:
+          ACHIEVEMENTS_TABLE_NAME: !Ref GameKitAchievements
+          ACHIEVEMENTS_BUCKET_NAME: !Ref AchievementsBucket
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/achievements/AdminAddAchievements.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  AdminAddAchievementsLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: AdminAddAchievementsLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${AdminAddAchievementsLambda}'
+  AdminAddAchievementsLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt AdminAddAchievementsLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  AdminGetAchievementsLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref AdminGetAchievementsLambdaName
+      Description: Admin function to get all achievements
+      Handler: index.lambda_handler
+      Role: !GetAtt AchievementsAdminLambdaRole.Arn
+      Environment:
+        Variables:
+          ACHIEVEMENTS_TABLE_NAME: !Ref GameKitAchievements
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/achievements/AdminGetAchievements.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  AdminGetAchievementsLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: AdminGetAchievementsLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${AdminGetAchievementsLambda}'
+  AdminGetAchievementsLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt AdminGetAchievementsLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  AdminDeleteAchievementsLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref AdminDeleteAchievementsLambdaName
+      Description: Admin function to delete achievements
+      Handler: index.lambda_handler
+      Role: !GetAtt AchievementsAdminLambdaRole.Arn
+      Environment:
+        Variables:
+          ACHIEVEMENTS_TABLE_NAME: !Ref GameKitAchievements
+          ACHIEVEMENTS_BUCKET_NAME: !Ref AchievementsBucket
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/achievements/AdminDeleteAchievements.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  AdminDeleteAchievementsLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: AdminDeleteAchievementsLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${AdminDeleteAchievementsLambda}'
+  AdminDeleteAchievementsLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt AdminDeleteAchievementsLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  UpdateAchievementsLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref UpdateAchievementsLambdaName
+      Description: Updates a player's achievement
+      Handler: index.lambda_handler
+      Role: !GetAtt AchievementsLambdaRole.Arn
+      Environment:
+        Variables:
+          ACHIEVEMENTS_TABLE_NAME: !Ref GameKitAchievements
+          PLAYER_ACHIEVEMENTS_TABLE_NAME: !Ref GameKitPlayerAchievements
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/achievements/UpdateAchievements.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  UpdateAchievementsLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: UpdateAchievementsLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${UpdateAchievementsLambda}'
+  UpdateAchievementsLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt UpdateAchievementsLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  GetAchievementsLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref GetAchievementsLambdaName
+      Description: Retrieves all player achievements, earned and unearned.
+      Handler: index.lambda_handler
+      Role: !GetAtt AchievementsLambdaRole.Arn
+      Environment:
+        Variables:
+          ACHIEVEMENTS_TABLE_NAME: !Ref GameKitAchievements
+          PLAYER_ACHIEVEMENTS_TABLE_NAME: !Ref GameKitPlayerAchievements
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/achievements/GetAchievements.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  GetAchievementsLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: GetAchievementsLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GetAchievementsLambda}'
+  GetAchievementsLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GetAchievementsLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  GetAchievementLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref GetAchievementLambdaName
+      Description: Retrieves a player achievement, earned or unearned.
+      Handler: index.lambda_handler
+      Role: !GetAtt AchievementsLambdaRole.Arn
+      Environment:
+        Variables:
+          ACHIEVEMENTS_TABLE_NAME: !Ref GameKitAchievements
+          PLAYER_ACHIEVEMENTS_TABLE_NAME: !Ref GameKitPlayerAchievements
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/achievements/GetAchievement.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  GetAchievementLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: GetAchievementLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GetAchievementLambda}'
+  GetAchievementLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GetAchievementLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  ResizeIconLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref ResizeIconLambdaName
+      Description: A Lambda Function configured as a PUT Trigger on the Achievements bucket for resizing icons
+      Handler: index.lambda_handler
+      Role: !GetAtt AchievementsLambdaRole.Arn
+      Environment:
+        Variables:
+          RESIZE_WIDTH: 100
+          RESIZE_HEIGHT: 100
+          DESTINATION_PREFIX: 'icons'
+          AWS_ACCOUNT_ID: !Sub '${AWS::AccountId}'
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/achievements/ResizeIcon.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+        - !Ref LambdaLayerARNImageProcessingLambdaLayer
+  ResizeIconLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: ResizeIconLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${ResizeIconLambda}'
+  ResizeIconLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt ResizeIconLambda.Arn
+      Principal: s3.amazonaws.com
+      SourceAccount: !Sub '${AWS::AccountId}'
+      SourceArn: !Sub 'arn:aws:s3:::gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-achievements'
+  AchievementsTokenAuthorizerLambda:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref AchievementsTokenAuthorizerLambdaName
+      Description: Custom Token Authorizer for Achievements feature
+      Handler: index.lambda_handler
+      Role: !GetAtt AchievementsTokenAuthorizerLambdaRole.Arn
+      Environment:
+        Variables:
+          JWKS_SECRET_NAME: !ImportValue
+            'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:TokenAuthorizerSecretName'
+          ENDPOINTS_ALLOWED: 'achievements*,achievements/*'
+          DEPLOYMENT_STAGE: !Ref GameKitEnv
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+          USER_IDENTIFIER_CLAIM_FIELD: !ImportValue
+            'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:TokenAuthorizerUserIdClaimName'
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/DefaultTokenAuthorizer.${IdentityLambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+        - !Ref LambdaLayerARNCryptoLambdaLayer
+  AchievementsTokenAuthorizerLambdaLogGroup:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: AchievementsTokenAuthorizerLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${AchievementsTokenAuthorizerLambda}'
+  AchievementsTokenAuthorizerLambdaPermission:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt AchievementsTokenAuthorizerLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/authorizers/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  AchievementApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApiRootResourceId'
+      PathPart: achievements
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  AchievementAdminApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref AchievementApiResource
+      PathPart: admin
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  AdminAddAchievementsApiResourcePostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      ResourceId: !Ref AchievementAdminApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminAddAchievementsLambda.Arn}/invocations'
+      RequestValidatorId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRequestValidator'
+      RequestParameters:
+        method.request.header.x-amz-date: true
+      RequestModels:
+        '$default': !Ref AchievementsArrayModel
+  AdminGetAchievementsApiResourceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref AchievementAdminApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminGetAchievementsLambda.Arn}/invocations'
+      RequestParameters:
+        method.request.header.x-amz-date: true
+        method.request.querystring.start_key: false
+        method.request.querystring.limit: false
+      RequestValidatorId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRequestValidator'
+  AdminDeleteAchievementsApiResourceDeleteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: DELETE
+      ResourceId: !Ref AchievementAdminApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AdminDeleteAchievementsLambda.Arn}/invocations'
+      RequestParameters:
+        method.request.header.x-amz-date: true
+      RequestValidatorId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRequestValidator'
+      RequestModels:
+        '$default': !Ref AchievementIdsModel
+  AchievementByIdApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref AchievementApiResource
+      PathPart: '{achievement_id}'
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  AchievementUnlockByIdApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref AchievementByIdApiResource
+      PathPart: 'unlock'
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  UpdateAchievementsApiResourcePostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      ResourceId: !Ref AchievementUnlockByIdApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateAchievementsLambda.Arn}/invocations'
+      RequestParameters:
+        method.request.header.authorization: true
+        method.request.path.achievement_id: true
+      RequestValidatorId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRequestValidator'
+      RequestModels:
+        '$default': !Ref UpdateAchievementsModel
+  UpdateAchievementsModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      ContentType: application/json
+      Description: Schema for Achievements Update API call
+      Schema:
+        $schema: 'http://json-schema.org/draft-04/schema#'
+        type: object
+        properties:
+          increment_by:
+            type: integer
+  AchievementIdsModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      ContentType: application/json
+      Description: Schema for Array of AchievementIds
+      Schema:
+        $schema: 'http://json-schema.org/draft-04/schema#'
+        type: object
+        properties:
+          achievement_ids:
+            type: array
+            items:
+              type: string
+  AchievementsArrayModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      ContentType: application/json
+      Description: Schema for Achievements Array
+      Schema:
+        $schema: 'http://json-schema.org/draft-04/schema#'
+        type: object
+        properties:
+          achievements:
+            title: AchievementsArray
+            type: array
+            items:
+              type: object
+              properties:
+                title:
+                  type: string
+                locked_description:
+                  type: string
+                unlocked_description:
+                  type: string
+                locked_icon_url:
+                  type: string
+                unlocked_icon_url:
+                  type: string
+                points:
+                  type: integer
+                is_stateful:
+                  type: boolean
+                max_value:
+                  type: integer
+                is_secret:
+                  type: boolean
+                is_hidden:
+                  type: boolean
+                order_number:
+                  type: integer
+                created_at:
+                  type: string
+                updated_at:
+                  type: string
+  GetAchievementsApiResourceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref AchievementApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetAchievementsLambda.Arn}/invocations'
+      RequestParameters:
+        method.request.header.authorization: true
+        method.request.querystring.start_key: false
+        method.request.querystring.limit: false
+      RequestValidatorId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRequestValidator'
+  GetAchievementApiResourceGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref AchievementByIdApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetAchievementLambda.Arn}/invocations'
+      RequestValidatorId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRequestValidator'
+      RequestParameters:
+        method.request.header.authorization: true
+        method.request.path.achievement_id: true
+  CloudFrontOriginIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: 'gamekit-${GameKitEnv}-${GameKitGameName} Origin Identity'
+  AchievementsBucket:
+    DependsOn: ResizeIconLambdaPermission
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName: !Sub 'gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-achievements'
+      LifecycleConfiguration:
+        Rules:
+          - Prefix: uploads/
+            Status: Enabled
+            ExpirationInDays: 1
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - HEAD
+            AllowedOrigins:
+              - '*'
+            MaxAge: 3000
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:Put'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+            Function: !Sub '${ResizeIconLambda.Arn}'
+      LoggingConfiguration:
+        !If
+        - IsS3AccessLoggingEnabled
+        -
+          DestinationBucketName: !Ref AchievementsLoggingBucket
+          LogFilePrefix: 'achievements-bucket-logs'
+        - !Ref "AWS::NoValue"
+  AchievementsLoggingBucket:
+    Type: AWS::S3::Bucket
+    Condition: IsS3AccessLoggingEnabled
+    Properties:
+      BucketName: !Sub 'gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-achievements-bucket-log'
+      AccessControl: LogDeliveryWrite
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  AchievementsIconsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AchievementsBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginIdentity.S3CanonicalUserId
+            Action: 's3:GetObject'
+            Resource: !Sub '${AchievementsBucket.Arn}/*'
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:DeleteObject'
+            Resource: !Sub '${AchievementsBucket.Arn}/icons/*'
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 's3:ListBucket'
+            Resource: !Sub '${AchievementsBucket.Arn}'
+  AchievementsIconsDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        CacheBehaviors:
+          - PathPattern: '*'
+            AllowedMethods:
+              - HEAD
+              - GET
+            CachedMethods:
+              - HEAD
+              - GET
+            Compress: false
+            ForwardedValues:
+              Cookies:
+                Forward: none
+              QueryString: false
+              Headers:
+                - 'Origin'
+            TargetOriginId: !Sub 'S3-${AchievementsBucket}/icons'
+            ViewerProtocolPolicy: redirect-to-https
+          - PathPattern: 'Cors'
+            AllowedMethods:
+              - HEAD
+              - GET
+              - OPTIONS
+            CachedMethods:
+              - HEAD
+              - GET
+              - OPTIONS
+            Compress: false
+            ForwardedValues:
+              Cookies:
+                Forward: none
+              QueryString: false
+              Headers:
+                - 'Accept'
+                - 'Access-Control-Request-Headers'
+                - 'Access-Control-Request-Method'
+                - 'Origin'
+            TargetOriginId: !Sub 'S3-${AchievementsBucket}/icons'
+            ViewerProtocolPolicy: allow-all
+        Comment: !Sub 'gamekit-${GameKitEnv}-${GameKitGameName} distribution for achievement icons'
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - HEAD
+            - GET
+            - OPTIONS
+          CachedMethods:
+            - HEAD
+            - GET
+            - OPTIONS
+          Compress: false
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: false
+            Headers:
+              - 'Access-Control-Request-Headers'
+              - 'Access-Control-Request-Method'
+              - 'Origin'
+          TargetOriginId: !Sub 'S3-${AchievementsBucket}/icons'
+          ViewerProtocolPolicy: allow-all
+        Origins:
+          - DomainName: !GetAtt AchievementsBucket.RegionalDomainName
+            Id: !Sub 'S3-${AchievementsBucket}/icons'
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOriginIdentity}"
+        PriceClass: 'PriceClass_100'
+        Enabled: true
+  EmptyAchievementsBucketOnDelete:
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:EmptyS3BucketOnDelete'
+      bucket_name: !Ref AchievementsBucket
+  EmptyAchievementsLoggingBucketOnDelete:
+    Type: Custom::LambdaTrigger
+    Properties:
+      ServiceToken: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:EmptyS3BucketOnDelete'
+      bucket_name: !Ref AchievementsLoggingBucket
+      delete_bucket: true
+  AchievementsAdminInvokeRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: execute-api:Invoke
+                Resource: !Sub "arn:aws:execute-api:*:${AWS::AccountId}:*/*/*/achievements/admin"
+          PolicyName: !Ref AchievementsAdminInvokePolicyName
+      RoleName: !Ref AchievementsAdminInvokeRoleName
+  TokenAuthorizer:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::ApiGateway::Authorizer'
+    Properties:
+      Name: Achievements-Token-Authorizer
+      Type: TOKEN
+      IdentitySource: method.request.header.authorization
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AchievementsTokenAuthorizerLambda.Arn}/invocations'
+      AuthorizerResultTtlInSeconds: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:TokenAuthorizerCacheTtlInSeconds'
+  CognitoAuthorizer:
+    Condition: IsNotUsingThirdPartyIdentityProvider
+    Type: 'AWS::ApiGateway::Authorizer'
+    Properties:
+      Name: Achievements-Cognito-Authorizer
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.authorization
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      ProviderARNs:
+        - !ImportValue
+          'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:GameKitUserPoolArn'
+  CloudWatchDashboardStack:
+    Condition: IsCloudWatchDashboardEnabled
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: !Sub https://do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}.s3.${AWS::Region}.amazonaws.com/cloudformation/achievements/dashboard.yml
+      TimeoutInMinutes: '15'
+      Parameters:  
+        GameKitEnv: !Sub ${GameKitEnv}
+        GameKitGameName: !Sub ${GameKitGameName}
+        AdminDeleteAchievementsLambdaName: !Ref AdminDeleteAchievementsLambdaName
+        AchievementsTableName: !Ref AchievementsTableName
+        PlayerAchievementsTableName: !Ref PlayerAchievementsTableName
+        AchievementsAdminLambdaRoleName: !Ref AchievementsAdminLambdaRoleName
+        AchievementsLambdaRoleName: !Ref AchievementsLambdaRoleName
+        AdminAddAchievementsLambdaName: !Ref AdminAddAchievementsLambdaName
+        AdminGetAchievementsLambdaName: !Ref AdminGetAchievementsLambdaName
+        UpdateAchievementsLambdaName: !Ref UpdateAchievementsLambdaName
+        GetAchievementsLambdaName: !Ref GetAchievementsLambdaName
+        GetAchievementLambdaName: !Ref GetAchievementLambdaName
+        ResizeIconLambdaName: !Ref ResizeIconLambdaName
+
+Outputs:
+  AchievementsApiGatewayBaseUrl:
+    Description: The API Gateway base url for the achievements feature
+    Value: !Sub
+      - 'https://${MainRestApi}.execute-api.${AWS::Region}.amazonaws.com/${GameKitEnv}/achievements'
+      - MainRestApi:
+          Fn::ImportValue:
+            !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:AchievementsApiGatewayBaseUrl'
+  AchievementsRegion:
+    Description: Region
+    Value: !Sub '${AWS::Region}'
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:AchievementsRegion'
+  AchievementsIconsCloudFrontBaseUrl:
+    Description: The CloudFront base url for achievement icons
+    Value: !Sub
+      - 'https://${CloudFrontDomain}'
+      - CloudFrontDomain: !GetAtt AchievementsIconsDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:AchievementsIconsCloudFrontBaseUrl'
