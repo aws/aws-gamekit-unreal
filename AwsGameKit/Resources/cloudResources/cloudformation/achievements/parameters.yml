@@ -1,0 +1,64 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+GameKitEnv:
+  value: {{AWSGAMEKIT::SYS::ENV}}
+GameKitGameName:
+  value: {{AWSGAMEKIT::SYS::GAMENAME}}
+GameKitBase36AwsAccountId:
+  value: {{AWSGAMEKIT::SYS::BASE36AWSACCOUNTID}}
+GameKitShortAwsRegionCode:
+  value: {{AWSGAMEKIT::SYS::SHORTREGIONCODE}}
+AchievementsTableName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_game_achievements"
+PlayerAchievementsTableName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_player_achievements"
+AchievementsAdminLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AchievementsAdminLambdaRole"
+AchievementsLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AchievementsLambdaRole"
+AdminAddAchievementsLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AdminAddAchievements"
+AdminGetAchievementsLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AdminGetAchievements"
+AdminDeleteAchievementsLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AdminDeleteAchievements"
+UpdateAchievementsLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_UpdateAchievements"
+GetAchievementsLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GetAchievements"
+GetAchievementLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GetAchievement"
+ResizeIconLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_ResizeIcon"
+AchievementsAdminInvokePolicyName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AchievementsAdminInvokePolicy"
+AchievementsAdminInvokeRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AchievementsAdminInvokeRole"
+AchievementsTokenAuthorizerLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AchievementsTokenAuthorizerLambdaRole"
+AchievementsTokenAuthorizerLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_AchievementsTokenAuthorizer"
+S3AccessLoggingEnabled:
+  value: true
+CloudWatchDashboardEnabled:
+  value: "{{AWSGAMEKIT::VARS::cloudwatch_dashboard_enabled}}"
+DetailedLambdaLoggingDisabled:
+  value: false
+LambdaFunctionsReplacementID:
+  value: "GAMEKIT_LAMBDA_FUNCTIONS_REPLACEMENT_ID_achievements_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCommonLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CommonLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNImageProcessingLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_ImageProcessingLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCryptoLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CryptoLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+IdentityLambdaFunctionsReplacementID:
+  value: "GAMEKIT_LAMBDA_FUNCTIONS_REPLACEMENT_ID_identity_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+
+# Advanced Usage:
+# Set UseThirdPartyIdentityProvider to true to use your own identity provider.
+# The value of this setting should match the identity feature's UseThirdPartyIdentityProvider value in identity/parameters.yml.
+UseThirdPartyIdentityProvider:
+  value: false

@@ -1,0 +1,79 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+GameKitEnv:
+  value: {{AWSGAMEKIT::SYS::ENV}}
+GameKitGameName:
+  value: {{AWSGAMEKIT::SYS::GAMENAME}}
+GameKitBase36AwsAccountId:
+  value: {{AWSGAMEKIT::SYS::BASE36AWSACCOUNTID}}
+GameKitShortAwsRegionCode:
+  value: {{AWSGAMEKIT::SYS::SHORTREGIONCODE}}
+IdentityTableName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_identities"
+CognitoLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_CognitoLambdaRole"
+CognitoPreSignUpLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_CognitoPreSignUp"
+CognitoPostConfirmationLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_CognitoPostConfirmation"
+CognitoFbCallbackHandlerLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_CognitoFbCallbackHandler"
+GenerateFacebookLoginUrlLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GenerateFacebookLoginUrl"
+PollFacebookLoginCompletionLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_PollFacebookLoginCompletion"
+RetrieveFacebookTokensLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_RetrieveFacebookTokens"
+CognitoUserPoolName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_UserPool"
+CognitoIdentityPoolName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_IdentityPool"
+CognitoIdentityPoolAuthRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GameKitIdentityPoolAuthRole"
+CognitoIdentityPoolUnauthRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GameKitIdentityPoolUnauthRole"
+CloudWatchDashboardEnabled:
+  value: "{{AWSGAMEKIT::VARS::cloudwatch_dashboard_enabled}}"
+FacebookClientId:
+  value: "{{AWSGAMEKIT::VARS::facebook_client_id}}"
+FacebookEnabled:
+  value: "{{AWSGAMEKIT::VARS::is_facebook_enabled}}"
+GetUserLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GetUser"
+GetUserLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_GetUserLambdaRole"
+GameKitKmsPolicyName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_KmsPolicy"
+DetailedLambdaLoggingDisabled:
+  value: false
+LambdaFunctionsReplacementID:
+  value: "GAMEKIT_LAMBDA_FUNCTIONS_REPLACEMENT_ID_identity_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCommonLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CommonLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+LambdaLayerARNCryptoLambdaLayer:
+  value: "GAMEKIT_LAMBDA_LAYER_ARN_main_CryptoLambdaLayer_{{AWSGAMEKIT::SYS::GAMENAME}}_{{AWSGAMEKIT::SYS::ENV}}"
+
+# Advanced Usage:
+# Set UseThirdPartyIdentityProvider to true to use your own identity provider.
+# The value of this setting should match every feature's UseThirdPartyIdentityProvider value in parameters.yml (i.e., If you set this to true, set it to true in every feature.)
+# By enabling this, Cognito will not be used, including Federated Identity Providers through Cognito (e.g., Facebook integration).
+UseThirdPartyIdentityProvider:
+  value: false
+JwksThirdPartyUri:
+  value: "" # A third party uri to get the JWKS. Example:http://yourownidentityprovider/.well-known/jwks.json
+JwksRefreshLambdaName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_JwksRefreshLambda"
+JwksRefreshLambdaRoleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_JwksRefreshLambdaRole"
+TokenAuthorizerSecretName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_ThirdPartyJwks"
+TokenAuthorizerUserIdClaimName:
+  value: 'sub' # This is a claim used to map to the player_id field in GameKit tables
+TokenAuthorizerCacheTtlInSeconds:
+  value: 300
+JwksScheduledRefreshEventRuleName:
+  value: "gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::SHORTREGIONCODE}}_{{AWSGAMEKIT::SYS::GAMENAME}}_JwksScheduledRefreshEventRule"
+JwksScheduledRefreshExpression:
+  value: 'cron(30 0 * * ? *)' # Runs daily 12:30AM UTC

@@ -1,0 +1,29 @@
+#
+# EDITING THIS FILE MAY LEAD TO BREAKING CHANGES
+# When adding a new region to your game, please add the region and it's corresponding shortcodes here.
+#
+{
+  five_letter_region_codes: {
+    us-east-1: usea1,
+    us-east-2: usea2,
+    us-west-1: uswe1,
+    us-west-2: uswe2,
+    af-south-1: afso1,
+    ap-east-1: apea1,
+    ap-south-1: apso1,
+    ap-northeast-3: apne3,
+    ap-northeast-2: apne2,
+    ap-southeast-1: apse1,
+    ap-southeast-2: apse2,
+    ap-northeast-1: apne1,
+    ca-central-1: cace1,
+    eu-central-1: euce1,
+    eu-west-1: euwe1,
+    eu-west-2: euwe2,
+    eu-south-1: euso1,
+    eu-west-3: euwe3,
+    eu-north-1: euno1,
+    me-south-1: meso1,
+    sa-east-1: saea1
+  }
+}

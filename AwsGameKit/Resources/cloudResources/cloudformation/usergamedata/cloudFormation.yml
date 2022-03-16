@@ -1,0 +1,911 @@
+---
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+Description: (GAMEKIT1004) - The AWS CloudFormation template for AWS GameKit User Gameplay Data. v1.0.0
+AWSTemplateFormatVersion: 2010-09-09
+
+# If you need to add more production stages, please change the following
+# Change the IsProduction condition to an Fn::Or and check for equality on all production stages
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-conditions.html
+
+Parameters:
+  GameKitEnv:
+    Type: String
+  GameKitGameName:
+    Type: String
+  GameKitBase36AwsAccountId:
+    Type: String
+  GameKitShortAwsRegionCode:
+    Type: String
+  UserGameDataLambdaInvokerRoleName:
+    Type: String
+  BatchDeleteHelperUserGameDataLambdaName:
+    Type: String
+  BundlesTableName:
+    Type: String
+  BundleItemsTableName:
+    Type: String
+  UserGameDataDbLambdaRoleName:
+    Type: String
+  AddUserGameDataLambdaName:
+    Type: String
+  DeleteAllUserGameDataLambdaName:
+    Type: String
+  DeleteBundleUserGameDataLambdaName:
+    Type: String
+  ListUserGameDataBundlesLambdaName:
+    Type: String
+  GetBundleUserGameDataLambdaName:
+    Type: String
+  GetItemUserGameDataLambdaName:
+    Type: String
+  UpdateItemUserGameDataLambdaName:
+    Type: String
+  UserGameDataTokenAuthorizerLambdaRoleName:
+    Type: String
+  UserGameDataTokenAuthorizerLambdaName:
+    Type: String
+  CloudWatchDashboardEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  DetailedLambdaLoggingDisabled:
+    Type: String
+    AllowedValues: [ "true", "false" ]
+  LambdaFunctionsReplacementID:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  LambdaLayerARNCommonLambdaLayer:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  LambdaLayerARNCryptoLambdaLayer:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  IdentityLambdaFunctionsReplacementID:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+  UseThirdPartyIdentityProvider:
+    Type: String
+    AllowedValues: [ "true", "false" ]
+Conditions:
+  IsProduction: !Equals [ { Ref: GameKitEnv }, 'prd' ]
+  IsUsingThirdPartyIdentityProvider: !Equals
+    - !Ref UseThirdPartyIdentityProvider
+    - true
+  IsNotUsingThirdPartyIdentityProvider: !Not
+    - !Equals
+      - !Ref UseThirdPartyIdentityProvider
+      - true
+  IsCloudWatchDashboardEnabled: !Equals
+    - !Ref CloudWatchDashboardEnabled
+    - true
+Resources:
+  GameKitUserGameDataBundles:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: player_id
+          AttributeType: S
+        - AttributeName: bundle_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_id
+          KeyType: HASH
+        - AttributeName: bundle_name
+          KeyType: RANGE
+      BillingMode: !If [ IsProduction, PROVISIONED, PAY_PER_REQUEST ]
+      ProvisionedThroughput:
+        !If
+        - IsProduction
+        - ReadCapacityUnits: 20
+          WriteCapacityUnits: 20
+        - Ref: AWS::NoValue
+      TableName: !Ref BundlesTableName
+  BundlesTableReadCapacityScalableTarget:
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    DependsOn: GameKitUserGameDataBundles
+    Condition: IsProduction
+    Properties:
+      MaxCapacity: 200
+      MinCapacity: 20
+      ResourceId: !Sub table/${BundlesTableName}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: "dynamodb:table:ReadCapacityUnits"
+      ServiceNamespace: dynamodb
+  BundlesTableReadScalingPolicy:
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    DependsOn: GameKitUserGameDataBundles
+    Condition: IsProduction
+    Properties:
+      PolicyName: ReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId:
+        Ref: BundlesTableReadCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
+  BundlesTableWriteCapacityScalableTarget:
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    DependsOn: GameKitUserGameDataBundles
+    Condition: IsProduction
+    Properties:
+      MaxCapacity: 200
+      MinCapacity: 20
+      ResourceId: !Sub table/${BundlesTableName}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: "dynamodb:table:WriteCapacityUnits"
+      ServiceNamespace: dynamodb
+  BundlesTableWriteScalingPolicy:
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    DependsOn: GameKitUserGameDataBundles
+    Condition: IsProduction
+    Properties:
+      PolicyName: WriteAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId:
+        Ref: BundlesTableWriteCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+  GameKitUserGameDataBundleItems:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: player_id_bundle
+          AttributeType: S
+        - AttributeName: bundle_item_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: player_id_bundle
+          KeyType: HASH
+        - AttributeName: bundle_item_key
+          KeyType: RANGE
+      BillingMode: !If [ IsProduction, PROVISIONED, PAY_PER_REQUEST ]
+      ProvisionedThroughput:
+        !If
+        - IsProduction
+        - ReadCapacityUnits: 20
+          WriteCapacityUnits: 20
+        - Ref: AWS::NoValue
+      TableName: !Ref BundleItemsTableName
+  BundleItemsTableReadCapacityScalableTarget:
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    DependsOn: GameKitUserGameDataBundleItems
+    Condition: IsProduction
+    Properties:
+      MaxCapacity: 200
+      MinCapacity: 20
+      ResourceId: !Sub table/${BundleItemsTableName}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: "dynamodb:table:ReadCapacityUnits"
+      ServiceNamespace: dynamodb
+  BundleItemsTableReadScalingPolicy:
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    DependsOn: GameKitUserGameDataBundleItems
+    Condition: IsProduction
+    Properties:
+      PolicyName: ReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId:
+        Ref: BundleItemsTableReadCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
+  BundleItemsTableWriteCapacityScalableTarget:
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    DependsOn: GameKitUserGameDataBundleItems
+    Condition: IsProduction
+    Properties:
+      MaxCapacity: 200
+      MinCapacity: 20
+      ResourceId: !Sub table/${BundleItemsTableName}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: "dynamodb:table:WriteCapacityUnits"
+      ServiceNamespace: dynamodb
+  BundleItemsTableWriteScalingPolicy:
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    DependsOn: GameKitUserGameDataBundleItems
+    Condition: IsProduction
+    Properties:
+      PolicyName: WriteAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId:
+        Ref: BundleItemsTableWriteCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+  UserGameDataDbLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref UserGameDataDbLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:BatchWriteItem'
+                  - 'dynamodb:DeleteItem'
+                Resource:
+                  - !Sub '${GameKitUserGameDataBundles.Arn}'
+                  - !Sub '${GameKitUserGameDataBundles.Arn}/index/*'
+                  - !Sub '${GameKitUserGameDataBundleItems.Arn}'
+                  - !Sub '${GameKitUserGameDataBundleItems.Arn}/index/*'
+              - !If
+                - IsNotUsingThirdPartyIdentityProvider
+                -
+                  Effect: Allow
+                  Action:
+                    - 'dynamodb:Query'
+                  Resource:
+                    - !Sub
+                      - '${IdentityTableArn}/index/*'
+                      - IdentityTableArn:
+                          Fn::ImportValue:
+                            !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableArn'
+                - !Ref AWS::NoValue
+  UserGameDataTokenAuthorizerLambdaRole:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref UserGameDataTokenAuthorizerLambdaRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:DescribeSecret'
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Sub
+                  - 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${TokenAuthorizerSecretName}*'
+                  - TokenAuthorizerSecretName:
+                      Fn::ImportValue:
+                        !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:TokenAuthorizerSecretName'
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:ListSecrets'
+                Resource: '*'
+  BatchDeleteHelperUserGameDataLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref BatchDeleteHelperUserGameDataLambdaName
+      Description: Helper Lambda for the User Gameplay Data Delete All Lambda
+      Handler: index.lambda_handler
+      Role: !GetAtt UserGameDataDbLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/usergamedata/BatchDeleteHelper.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 3
+      TracingConfig:
+        Mode: Active
+  BatchDeleteHelperUserGameDataLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: BatchDeleteHelperUserGameDataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${BatchDeleteHelperUserGameDataLambda}'
+  AddUserGameDataLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref AddUserGameDataLambdaName
+      Description: Handler for User Gameplay Data Addition
+      Handler: index.lambda_handler
+      Role: !GetAtt
+        - UserGameDataDbLambdaRole
+        - Arn
+      Environment:
+        Variables:
+          BUNDLES_TABLE_NAME: !Ref BundlesTableName
+          BUNDLE_ITEMS_TABLE_NAME: !Ref BundleItemsTableName
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/usergamedata/Add.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  AddUserGameDataLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: AddUserGameDataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${AddUserGameDataLambda}'
+  AddUserGameDataLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt AddUserGameDataLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  UpdateItemUserGameDataLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref UpdateItemUserGameDataLambdaName
+      Description: Handler for User Gameplay Data Item Update
+      Handler: index.lambda_handler
+      Role: !GetAtt UserGameDataDbLambdaRole.Arn
+      Environment:
+        Variables:
+          BUNDLE_ITEMS_TABLE_NAME: !Ref BundleItemsTableName
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/usergamedata/UpdateItem.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  UpdateItemUserGameDataLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: UpdateItemUserGameDataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${UpdateItemUserGameDataLambda}'
+  UpdateItemUserGameDataLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt UpdateItemUserGameDataLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  DeleteBundleUserGameDataLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref DeleteBundleUserGameDataLambdaName
+      Description: Handler for User Gameplay Data Bundle Deletion
+      Handler: index.lambda_handler
+      Role: !GetAtt UserGameDataDbLambdaRole.Arn
+      Environment:
+        Variables:
+          BUNDLES_TABLE_NAME: !Ref BundlesTableName
+          BUNDLE_ITEMS_TABLE_NAME: !Ref BundleItemsTableName
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/usergamedata/DeleteBundle.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  DeleteBundleUserGameDataLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: DeleteBundleUserGameDataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${DeleteBundleUserGameDataLambda}'
+  DeleteBundleUserGameDataLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt DeleteBundleUserGameDataLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  ListUserGameDataBundlesLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref ListUserGameDataBundlesLambdaName
+      Description: Handler for User Gameplay Data Bundles Retrieval
+      Handler: index.lambda_handler
+      Role: !GetAtt
+        - UserGameDataDbLambdaRole
+        - Arn
+      Environment:
+        Variables:
+          BUNDLES_TABLE_NAME: !Ref BundlesTableName
+          BUNDLE_ITEMS_TABLE_NAME: !Ref BundleItemsTableName
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/usergamedata/ListBundles.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  ListUserGameDataBundlesLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: ListUserGameDataBundlesLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${ListUserGameDataBundlesLambda}'
+  ListUserGameDataBundlesLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt ListUserGameDataBundlesLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  GetBundleUserGameDataLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref GetBundleUserGameDataLambdaName
+      Description: Handler for User Gameplay Data Bundle Retrieval
+      Handler: index.lambda_handler
+      Role: !GetAtt
+        - UserGameDataDbLambdaRole
+        - Arn
+      Environment:
+        Variables:
+          BUNDLES_TABLE_NAME: !Ref BundlesTableName
+          BUNDLE_ITEMS_TABLE_NAME: !Ref BundleItemsTableName
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/usergamedata/GetBundle.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  GetBundleUserGameDataLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: GetBundleUserGameDataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GetBundleUserGameDataLambda}'
+  GetBundleUserGameDataLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GetBundleUserGameDataLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  GetItemUserGameDataLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref GetItemUserGameDataLambdaName
+      Description: Handler for User Gameplay Data Item Retrieval
+      Handler: index.lambda_handler
+      Role: !GetAtt
+        - UserGameDataDbLambdaRole
+        - Arn
+      Environment:
+        Variables:
+          BUNDLES_TABLE_NAME: !Ref BundlesTableName
+          BUNDLE_ITEMS_TABLE_NAME: !Ref BundleItemsTableName
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/usergamedata/GetItem.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  GetItemUserGameDataLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: GetItemUserGameDataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${GetItemUserGameDataLambda}'
+  GetItemUserGameDataLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt GetItemUserGameDataLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  UserGameDataLambdaInvokerRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref UserGameDataLambdaInvokerRoleName
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /service-role/
+      Policies:
+        - PolicyName: AdditionalPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:GetItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:Query'
+                  - 'dynamodb:Scan'
+                  - 'dynamodb:BatchGetItem'
+                  - 'dynamodb:BatchWriteItem'
+                  - 'dynamodb:DeleteItem'
+                Resource:
+                  - !Sub '${GameKitUserGameDataBundles.Arn}'
+                  - !Sub '${GameKitUserGameDataBundles.Arn}/index/*'
+                  - !Sub '${GameKitUserGameDataBundleItems.Arn}'
+                  - !Sub '${GameKitUserGameDataBundleItems.Arn}/index/*'
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource:
+                  - !Sub '${BatchDeleteHelperUserGameDataLambda.Arn}'
+  DeleteAllUserGameDataLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref DeleteAllUserGameDataLambdaName
+      Description: Handler for User Gameplay Data Deletion
+      Handler: index.lambda_handler
+      Role: !GetAtt UserGameDataLambdaInvokerRole.Arn
+      Environment:
+        Variables:
+          BUNDLES_TABLE_NAME: !Ref BundlesTableName
+          BUNDLE_ITEMS_TABLE_NAME: !Ref BundleItemsTableName
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
+          BATCH_DELETE_HELPER_LAMBDA_NAME: !Sub '${BatchDeleteHelperUserGameDataLambda.Arn}'
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/usergamedata/DeleteAll.${LambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+  DeleteAllUserGameDataLambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: DeleteAllUserGameDataLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${DeleteAllUserGameDataLambda}'
+  DeleteAllUserGameDataLambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt DeleteAllUserGameDataLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/*/*/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  UserGameDataTokenAuthorizerLambda:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Ref UserGameDataTokenAuthorizerLambdaName
+      Description: Custom Token Authorizer for UserGameData feature
+      Handler: index.lambda_handler
+      Role: !GetAtt UserGameDataTokenAuthorizerLambdaRole.Arn
+      Environment:
+        Variables:
+          JWKS_SECRET_NAME: !ImportValue
+            'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:TokenAuthorizerSecretName'
+          ENDPOINTS_ALLOWED: 'usergamedata*,usergamedata/*'
+          DEPLOYMENT_STAGE: !Ref GameKitEnv
+          DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+          USER_IDENTIFIER_CLAIM_FIELD: !ImportValue
+            'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:TokenAuthorizerUserIdClaimName'
+      Code:
+        S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
+        S3Key: !Sub 'functions/identity/DefaultTokenAuthorizer.${IdentityLambdaFunctionsReplacementID}.zip'
+      Runtime: python3.7
+      Timeout: 25
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref LambdaLayerARNCommonLambdaLayer
+        - !Ref LambdaLayerARNCryptoLambdaLayer
+  UserGameDataTokenAuthorizerLambdaLogGroup:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn: UserGameDataTokenAuthorizerLambda
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub '/aws/lambda/${UserGameDataTokenAuthorizerLambda}'
+  UserGameDataTokenAuthorizerLambdaPermission:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt UserGameDataTokenAuthorizerLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MainApi}/authorizers/*'
+        - MainApi:
+            Fn::ImportValue:
+              !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  TokenAuthorizer:
+    Condition: IsUsingThirdPartyIdentityProvider
+    Type: 'AWS::ApiGateway::Authorizer'
+    Properties:
+      Name: UserGameData-Token-Authorizer
+      Type: TOKEN
+      IdentitySource: method.request.header.authorization
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UserGameDataTokenAuthorizerLambda.Arn}/invocations'
+      AuthorizerResultTtlInSeconds: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:TokenAuthorizerCacheTtlInSeconds'
+  CognitoAuthorizer:
+    Condition: IsNotUsingThirdPartyIdentityProvider
+    Type: 'AWS::ApiGateway::Authorizer'
+    Properties:
+      Name: UserGameData-Cognito-Authorizer
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.authorization
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      ProviderARNs:
+        - !ImportValue
+          'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:GameKitUserPoolArn'
+  UserGameDataApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApiRootResourceId'
+      PathPart: usergamedata
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  BundlesUserGameDataApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !Ref UserGameDataApiResource
+      PathPart: 'bundles'
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  BundleNameUserGameDataApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !Ref BundlesUserGameDataApiResource
+      PathPart: '{bundle_name}'
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  BundleItemsUserGameDataApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !Ref BundleNameUserGameDataApiResource
+      PathPart: 'items'
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  BundleItemKeyUserGameDataApiResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !Ref BundleItemsUserGameDataApiResource
+      PathPart: '{bundle_item_key}'
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+  AddUserGameDataApiResourcePostMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: POST
+      ResourceId: !Ref BundleNameUserGameDataApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AddUserGameDataLambda.Arn}/invocations'
+  ListBundlesUserGameDataApiResourceGetMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref BundlesUserGameDataApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListUserGameDataBundlesLambda.Arn}/invocations'
+  GetBundleUserGameDataApiResourceGetMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref BundleNameUserGameDataApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetBundleUserGameDataLambda.Arn}/invocations'
+  GetBundleItemUserGameDataApiResourceGetMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: GET
+      ResourceId: !Ref BundleItemKeyUserGameDataApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetItemUserGameDataLambda.Arn}/invocations'
+  UpdateBundleItemUserGameDataApiResourcePutMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: PUT
+      ResourceId: !Ref BundleItemKeyUserGameDataApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateItemUserGameDataLambda.Arn}/invocations'
+  DeleteAllUserGameDataApiResourceDeleteMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: DELETE
+      ResourceId: !Ref UserGameDataApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteAllUserGameDataLambda.Arn}/invocations'
+  DeleteBundleUserGameDataApiResourceDeleteMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      HttpMethod: DELETE
+      ResourceId: !Ref BundleNameUserGameDataApiResource
+      RestApiId: !ImportValue
+        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+      AuthorizationType: !If [ IsUsingThirdPartyIdentityProvider, CUSTOM, COGNITO_USER_POOLS ]
+      AuthorizerId: !If [ IsUsingThirdPartyIdentityProvider, !Ref TokenAuthorizer, !Ref CognitoAuthorizer ]
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteBundleUserGameDataLambda.Arn}/invocations'
+  UserGameDataCloudWatchDashboardStack:
+    Condition: IsCloudWatchDashboardEnabled
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: !Sub https://do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}.s3.${AWS::Region}.amazonaws.com/cloudformation/usergamedata/dashboard.yml
+      TimeoutInMinutes: '15'
+      Parameters:
+        GameKitEnv: !Sub ${GameKitEnv}
+        GameKitGameName: !Sub ${GameKitGameName}
+        BundlesTableName: !Sub ${BundlesTableName}
+        BundleItemsTableName: !Sub ${BundleItemsTableName}
+        MainApiGatewayName: !Sub gamekit_${GameKitEnv}_${GameKitGameName}_main
+        AddUserGameDataLambdaName: !Sub ${AddUserGameDataLambdaName}
+        BatchDeleteHelperUserGameDataLambdaName: !Sub ${BatchDeleteHelperUserGameDataLambdaName}
+        DeleteAllUserGameDataLambdaName: !Sub ${DeleteAllUserGameDataLambdaName}
+        DeleteBundleUserGameDataLambdaName: !Sub ${DeleteBundleUserGameDataLambdaName}
+        GetBundleUserGameDataLambdaName: !Sub ${GetBundleUserGameDataLambdaName}
+        GetItemUserGameDataLambdaName: !Sub ${GetItemUserGameDataLambdaName}
+        ListUserGameDataBundlesLambdaName: !Sub ${ListUserGameDataBundlesLambdaName}
+        UpdateItemUserGameDataLambdaName: !Sub ${UpdateItemUserGameDataLambdaName}
+Outputs:
+  UserGameDataApiGatewayBaseUrl:
+    Description: The API Gateway base url for the User Gameplay Data feature
+    Value: !Sub
+      - 'https://${MainRestApi}.execute-api.${AWS::Region}.amazonaws.com/${GameKitEnv}/usergamedata'
+      - MainRestApi:
+          Fn::ImportValue:
+            !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:UserGameDataApiGatewayBaseUrl'
+  UserGameDataRegion:
+    Description: Region
+    Value: !Sub '${AWS::Region}'
+    Export:
+      Name: !Sub '${AWS::StackName}:${AWS::Region}:UserGameDataRegion'

@@ -1,0 +1,55 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DeleteParameter",
+                "logs:DeleteLogGroup"
+            ],
+            "Resource": [
+                "arn:aws:logs:*",
+                "arn:aws:ssm:*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucketMultipartUploads",
+                "s3:ListBucketVersions",
+                "s3:ListBucket"
+            ],
+            "Resource": "arn:aws:s3:::*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "s3:ListMultipartUploadParts",
+            "Resource": "arn:aws:s3:::*/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "s3:DeleteBucket",
+            "Resource": "arn:aws:s3:::*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "s3:DeleteObject",
+            "Resource": "arn:aws:s3:::*/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListStorageLensConfigurations",
+                "s3:ListAccessPointsForObjectLambda",
+                "s3:ListAllMyBuckets",
+                "s3:ListAccessPoints",
+                "ssm:DescribeParameters",
+                "s3:ListJobs",
+                "sts:GetCallerIdentity",
+                "s3:ListMultiRegionAccessPoints",
+                "secretsmanager:ListSecrets"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

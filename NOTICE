@@ -1,0 +1,58 @@
+AWS GameKit Plugin for Unreal
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+This product includes software developed by
+Amazon Technologies, Inc (http://www.amazon.com/).
+
+**********************
+THIRD PARTY COMPONENTS
+**********************
+This software includes the following third-party software/licensing:
+Google test - https://github.com/google/googletest/blob/master/LICENSE
+Boost - https://www.boost.org/LICENSE_1_0.txt
+AWS C++ SDK - https://github.com/aws/aws-sdk-cpp/blob/main/LICENSE
+yaml-cpp - https://github.com/jbeder/yaml-cpp/blob/master/LICENSE
+miniz v1.14 - https://github.com/richgel999/miniz/blob/v114/miniz.c
+aws-encryption-sdk - https://github.com/aws/aws-encryption-sdk-python/blob/master/LICENSE
+cryptography - https://github.com/pyca/cryptography/blob/main/LICENSE.APACHE
+cffi - https://foss.heptapod.net/pypy/cffi/-/blob/branch/default/LICENSE
+boto3 - https://github.com/boto/boto3/blob/develop/LICENSE
+botocore - https://github.com/boto/botocore/blob/develop/LICENSE.txt
+python-jose - https://github.com/mpdavis/python-jose/blob/master/LICENSE
+
+----------------
+
+** Pillow https://python-pillow.org/
+
+The Python Imaging Library (PIL) is
+
+    Copyright © 1997-2011 by Secret Labs AB
+    Copyright © 1995-2011 by Fredrik Lundh
+
+Pillow is the friendly PIL fork. It is
+
+    Copyright © 2010-2021 by Alex Clark and contributors
+
+Like PIL, Pillow is licensed under the open source HPND License:
+
+By obtaining, using, and/or copying this software and/or its associated
+documentation, you agree that you have read, understood, and will comply
+with the following terms and conditions:
+
+Permission to use, copy, modify, and distribute this software and its
+associated documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appears in all copies, and that
+both that copyright notice and this permission notice appear in supporting
+documentation, and that the name of Secret Labs AB or the author not be
+used in advertising or publicity pertaining to distribution of the software
+without specific, written prior permission.
+
+SECRET LABS AB AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
+SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS.
+IN NO EVENT SHALL SECRET LABS AB OR THE AUTHOR BE LIABLE FOR ANY SPECIAL,
+INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+----------------
