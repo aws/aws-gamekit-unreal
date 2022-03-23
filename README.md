@@ -5,7 +5,7 @@
 ### Unreal/C++
 **The plugin is developed using Unreal version 4.27. Install before proceeding.**
 
-Changes are not backwards compatible between Unreal versions; use of any version later than 4.27 will result in work that others cannot use.
+Game projects created in Unreal versions later than 4.27 are not backward compatible. AWS GameKit supports the latest stable version of Unreal Engine which is currently 4.27.
 
 #### Build:
 1. Create the Visual Studio Solution for your game. In File Explorer, right click on `[your_game].uproject` and select "Generate Visual Studio project files"
