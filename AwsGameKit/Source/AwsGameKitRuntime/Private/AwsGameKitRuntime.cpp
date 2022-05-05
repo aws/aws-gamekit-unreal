@@ -31,55 +31,13 @@ void FAwsGameKitRuntimeModule::StartupModule()
     UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitRuntimeModule::StartupModule()"));
     const bool wrappersInitialized = initializeWrappers();
 
-#if WITH_EDITOR
-    if (!wrappersInitialized)
-    {
-        // AWS GameKit binaries are not detected in the project's Binaries directory. We will regenerate the project files and rebuild the project.
-
-        const FText title = FText::FromString("AWS GameKit");
-
-        // Regenerate project files
-        const UGeneralProjectSettings& ProjectSettings = *GetDefault<UGeneralProjectSettings>();
-        const FString projectFile = FPaths::GetProjectFilePath().Append(ProjectSettings.ProjectName);
-        UE_LOG(LogAwsGameKit, Log, TEXT("Generating project files for %s ..."), *projectFile);
-        if (!FDesktopPlatformModule::Get()->GenerateProjectFiles(FPaths::RootDir(), projectFile, GWarn))
-        {
-            FString errorMsg = "Failed to generate project files for " + projectFile + ". This could be due to another instance of UnrealBuildTool running in the background. Try reopening the project or recompile the project in your IDE.";
-            FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(errorMsg), &title);
-            UE_LOG(LogAwsGameKit, Error, TEXT("%s"), *errorMsg);
-            FGenericPlatformMisc::RequestExit(true);
-            return;
-        }
-
-        // Build project
-        UE_LOG(LogAwsGameKit, Log, TEXT("Compiling project %s ..."), *projectFile);
-        if (!GameProjectUtils::BuildCodeProject(projectFile))
-        {
-            FString errorMsg = "Failed to compile project " + projectFile + ". This could be due to another instance of UnrealBuildTool running in the background. Try reopening the project or recompile the project in your IDE.";
-            FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(errorMsg), &title);
-            UE_LOG(LogAwsGameKit, Error, TEXT("%s"), *errorMsg);
-            FGenericPlatformMisc::RequestExit(true);
-            return;
-        }
-
-        // Re-initialize wrapper
-        UE_LOG(LogAwsGameKit, Log, TEXT("Re-initializing AWS GameKit ..."));
-        if (!initializeWrappers())
-        {
-            FString errorMsg = "Failed to initialize AWS GameKit. This could be due to another instance of UnrealBuildTool running in the background. Try reopening the project or recompile the project in your IDE.";
-            FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(errorMsg), &title);
-            UE_LOG(LogAwsGameKit, Error, TEXT("%s"), *errorMsg);
-            FGenericPlatformMisc::RequestExit(true);
-            return;
-        }
-    }
-#endif
-
     // Starts the SessionManager with an empty configuration file.
     // The configuration file can be reloaded by calling AwsGameKitSessionManagerWrapper::ReloadConfigFile()
     sessionManagerLibrary.SessionManagerInstanceHandle = sessionManagerLibrary.SessionManagerWrapper->GameKitSessionManagerInstanceCreate(nullptr, FGameKitLogging::LogCallBack);
 
-#if UE_BUILD_SHIPPING
+#if PLATFORM_ANDROID || PLATFORM_IOS
+    ReloadConfigFile(""); // Mobile platforms have logic to determine the path in the device file system
+#elif UE_BUILD_SHIPPING || !WITH_EDITOR
     ReloadConfigFile(FPaths::LaunchDir());
 #endif
 }
@@ -88,15 +46,50 @@ void FAwsGameKitRuntimeModule::ShutdownModule()
 {
     // Unload AWS GameKitSession Manager Library
     UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitRuntimeModule::ShutdownModule()"));
-    sessionManagerLibrary.SessionManagerWrapper->GameKitSessionManagerInstanceRelease(sessionManagerLibrary.SessionManagerInstanceHandle);
 
     // Calling Shutdown() on this module gives exceptions after the editor is closed.
 
-    coreLibrary.CoreWrapper.Reset();
-    coreLibrary.CoreWrapper = nullptr;
+    if (identityLibrary.IdentityWrapper != nullptr)
+    {
+        UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitRuntimeModule::ShutdownModule(): Releasing Identity Library"));
+        identityLibrary.IdentityWrapper->GameKitIdentityInstanceRelease(identityLibrary.IdentityInstanceHandle);
+        identityLibrary.IdentityWrapper = nullptr;
+    }
 
-    sessionManagerLibrary.SessionManagerWrapper.Reset();
-    sessionManagerLibrary.SessionManagerWrapper = nullptr;
+    if (achievementsLibrary.AchievementsWrapper != nullptr)
+    {
+        UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitRuntimeModule::ShutdownModule(): Releasing Achievements Library"));
+        achievementsLibrary.AchievementsWrapper->GameKitAchievementsInstanceRelease(achievementsLibrary.AchievementsInstanceHandle);
+        achievementsLibrary.AchievementsWrapper = nullptr;
+    }
+
+    if (gameSavingLibrary.GameSavingWrapper != nullptr)
+    {
+        UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitRuntimeModule::ShutdownModule(): Releasing Game Saving Library"));
+        gameSavingLibrary.GameSavingWrapper->GameKitGameSavingInstanceRelease(gameSavingLibrary.GameSavingInstanceHandle);
+        gameSavingLibrary.GameSavingWrapper  = nullptr;
+    }
+
+    if (userGameplayDataLibrary.UserGameplayDataWrapper != nullptr)
+    {
+        UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitRuntimeModule::ShutdownModule(): Releasing User Gameplay Data Library"));
+        userGameplayDataLibrary.UserGameplayDataWrapper->GameKitUserGameplayDataInstanceRelease(userGameplayDataLibrary.UserGameplayDataInstanceHandle);
+        userGameplayDataLibrary.UserGameplayDataWrapper = nullptr;
+        userGameplayDataLibrary.UserGameplayDataStateHandler = nullptr;
+    }
+
+    if (coreLibrary.CoreWrapper != nullptr)
+    {
+        UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitRuntimeModule::ShutdownModule(): Releasing Core Library"));
+        coreLibrary.CoreWrapper = nullptr;
+    }
+
+    if (sessionManagerLibrary.SessionManagerWrapper != nullptr)
+    {
+        UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitRuntimeModule::ShutdownModule(): Releasing SessionManager Library"));
+        sessionManagerLibrary.SessionManagerWrapper->GameKitSessionManagerInstanceRelease(sessionManagerLibrary.SessionManagerInstanceHandle);
+        sessionManagerLibrary.SessionManagerWrapper = nullptr;
+    }
 }
 
 bool FAwsGameKitRuntimeModule::AreFeatureSettingsLoaded(FeatureType type) const

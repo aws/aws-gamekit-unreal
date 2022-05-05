@@ -1035,7 +1035,7 @@ bool AwsGameKitCredentialsLayoutDetails::TryLoadAwsCredentialsFromFile()
 
     EnableInputBoxes(true);
 
-    if (projectNameBox->GetVisibility() == EVisibility::Collapsed) {
+    if (projectNameBox->GetVisibility() == EVisibility::Collapsed && !accessKeyTextBox->GetText().IsEmpty() && !secretKeyTextBox->GetText().IsEmpty()) {
         newEnvironmentNotification->SetVisibility(EVisibility::Visible);
     }
     isLoadingEnvironmentFromFile = false;

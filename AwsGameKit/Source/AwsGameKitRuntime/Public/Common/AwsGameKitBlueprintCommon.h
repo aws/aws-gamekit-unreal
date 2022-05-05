@@ -10,6 +10,7 @@
 
 // Unreal
 #include "Async/Async.h"
+#include "Containers/Queue.h"
 #include "Engine/LatentActionManager.h"
 #include "Engine/World.h"
 #include "LatentActions.h"

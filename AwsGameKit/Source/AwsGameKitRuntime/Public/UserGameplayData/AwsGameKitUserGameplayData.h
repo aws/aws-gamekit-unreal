@@ -177,6 +177,7 @@ public:
      * - GAMEKIT_ERROR_MALFORMED_BUNDLE_NAME: The bundle name in userGameplayDataBundleItemsDeleteRequest is malformed. If this error is received, Check the output log for more details on requirements.
      * - GAMEKIT_ERROR_MALFORMED_BUNDLE_ITEM_KEY: The bundle key in userGameplayDataBundleItemsDeleteRequest is malformed. If this error is received, Check the output log for more details on which item keys are not valid.
      * - GAMEKIT_ERROR_NO_ID_TOKEN: The player is not logged in. You must login the player through the Identity & Authentication feature (AwsGameKitIdentity) before calling this method.
+     * - GAMEKIT_ERROR_USER_GAMEPLAY_DATA_PAYLOAD_TOO_LARGE: The payload in the request is too large. If this error is received, check the output log for more details on payload length constraints.
      * - GAMEKIT_ERROR_USER_GAMEPLAY_DATA_API_CALL_FAILED: The call made to the backend service has failed.
      * - GAMEKIT_ERROR_USER_GAMEPLAY_DATA_API_CALL_DROPPED: The call made to the backend service has been dropped.
      * - GAMEKIT_WARNING_USER_GAMEPLAY_DATA_API_CALL_ENQUEUED: The call made to the backend service has been enqueued as connection may be unhealthy and will automatically be retried.

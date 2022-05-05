@@ -78,7 +78,7 @@ protected:
 #if PLATFORM_WINDOWS
         return "aws-gamekit-user-gameplay-data";
 #elif PLATFORM_MAC || PLATFORM_IOS
-        return "libaws-gamekit-gameplay-data";
+        return "libaws-gamekit-user-gameplay-data";
 #else
         return "";
 #endif

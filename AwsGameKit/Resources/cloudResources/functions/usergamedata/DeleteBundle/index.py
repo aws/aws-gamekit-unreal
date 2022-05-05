@@ -10,10 +10,11 @@ Deletes a single bundle for the calling user. If the body contains bundle_items 
 import json
 import boto3
 import botocore
+import logging
 from boto3.dynamodb.conditions import Key
 import os
 import sys
-import logging
+import urllib.parse
 
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 from gamekithelpers import handler_response, handler_request, user_game_play_constants
@@ -102,12 +103,22 @@ def lambda_handler(event, context):
 
     # Get bundle_name from path
     bundle_name = handler_request.get_path_param(event, 'bundle_name')
-    if bundle_name is None or len(bundle_name) > user_game_play_constants.BUNDLE_NAME_MAX_LENGTH:
+    if bundle_name is None:
+        logger.error("Path parameter 'bundle_name' is missing.")
         return _invalid_request()
 
-    body = event.get('body')
+    if len(bundle_name) > user_game_play_constants.BUNDLE_NAME_MAX_LENGTH:
+        logger.error(f"Path parameter 'bundle_name' exceeds maximum allowed length of {user_game_play_constants.BUNDLE_NAME_MAX_LENGTH} characters.")
+        return _invalid_request()
 
-    if body is None:  # If body is None we are deleting the entire bundle
+    querystring_payload = handler_request.get_query_string_param(event, 'payload')
+    querystring_payload = urllib.parse.unquote(querystring_payload) if querystring_payload else None
+
+    if querystring_payload and len(querystring_payload) >= user_game_play_constants.QUERYSTRING_MAX_LENGTH:
+        logger.error(f"Query string 'payload' exceeds maximum allowed length of {user_game_play_constants.QUERYSTRING_MAX_LENGTH} characters.")
+        return _invalid_request()
+
+    if querystring_payload is None:  # If querystring 'payload' argument is None we are deleting the entire bundle
         try:
             bundle_items = _get_player_bundle_items_request(player_id + "_" + bundle_name)
         except botocore.exceptions.ClientError as err:
@@ -126,7 +137,8 @@ def lambda_handler(event, context):
                 logger.error(f"Error deleting player bundle items. Error: {err}")
                 raise err
     else:
-        bundle_item_keys = json.loads(body).get('bundle_item_keys')
+        bundle_item_keys = json.loads(querystring_payload).get('bundle_item_keys') if querystring_payload else None
+
         if bundle_item_keys is None or len(bundle_item_keys) == 0:
             return _invalid_request()
 
@@ -140,7 +152,7 @@ def lambda_handler(event, context):
                 raise err
 
     # If the entire bundle is deleted the bundle reference for the player is also deleted from the bundle table
-    if (body is None) or (not _get_player_bundle_items_request(player_id + "_" + bundle_name)):
+    if (querystring_payload is None) or (not _get_player_bundle_items_request(player_id + "_" + bundle_name)):
         table = ddb_resource.Table(os.environ['BUNDLES_TABLE_NAME'])
         try:
             table.delete_item(
@@ -151,20 +163,6 @@ def lambda_handler(event, context):
             )
         except botocore.exceptions.ClientError as err:
             logger.error(f"Error deleting player bundle. Error: {err}")
-            raise err
-
-    # If the entire bundle is deleted the bundle reference for the player is also deleted from the bundle table
-    if (body is None) or (not _get_player_bundle_items_request(player_id + "_" + bundle_name)):
-        table = ddb_resource.Table(os.environ['BUNDLES_TABLE_NAME'])
-        try:
-            table.delete_item(
-                Key={
-                    'player_id': player_id,
-                    'bundle_name': bundle_name
-                },
-            )
-        except botocore.exceptions.ClientError as err:
-            print(f"Error deleting player bundle. Error: {err}")
             raise err
 
     # Return operation result

@@ -64,7 +64,7 @@ protected:
 
 public:
     AwsGameKitSessionManagerWrapper() {};
-    virtual ~AwsGameKitSessionManagerWrapper() {};
+    virtual ~AwsGameKitSessionManagerWrapper();
 
     /**
      * @brief Create a GameKitSessionManager instance, which can be used to access the SessionManager API.

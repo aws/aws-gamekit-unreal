@@ -17,6 +17,7 @@ DEFINE_LOG_CATEGORY(LogAwsGameKit);
 
 void FAwsGameKitCoreModule::StartupModule()
 {
+  UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitCoreModule::StartupModule()"));
 #if PLATFORM_IOS
   ::GameKitInitializeAwsSdk(FGameKitLogging::LogCallBack);
 #endif
@@ -24,6 +25,10 @@ void FAwsGameKitCoreModule::StartupModule()
 
 void FAwsGameKitCoreModule::ShutdownModule()
 {
+  UE_LOG(LogAwsGameKit, Log, TEXT("FAwsGameKitCoreModule::ShutdownModule()"));
+#if PLATFORM_IOS
+  ::GameKitShutdownAwsSdk(FGameKitLogging::LogCallBack);
+#endif
 }
 
 #undef LOCTEXT_NAMESPACE

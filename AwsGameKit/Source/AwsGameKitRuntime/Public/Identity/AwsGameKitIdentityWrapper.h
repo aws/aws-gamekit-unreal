@@ -78,6 +78,9 @@ public:
     static const FString KEY_FEDERATED_LOGIN_URL_REQUEST_ID;
     static const FString KEY_FEDERATED_LOGIN_URL;
 
+    AwsGameKitIdentityWrapper() {};
+    virtual ~AwsGameKitIdentityWrapper();
+
     GAMEKIT_IDENTITY_INSTANCE_HANDLE GameKitIdentityInstanceCreateWithSessionManager(void* sessionManager, FuncLogCallback logCb);
     virtual void GameKitIdentityInstanceRelease(GAMEKIT_IDENTITY_INSTANCE_HANDLE identityInstance);
     virtual unsigned int GameKitIdentityRegister(GAMEKIT_IDENTITY_INSTANCE_HANDLE identityInstance, UserRegistration userRegistration);

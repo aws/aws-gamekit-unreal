@@ -79,7 +79,7 @@ public class AwsGameKitEditor : ModuleRules
                 PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Debug/libaws-gamekit-user-gameplay-data.a"));
 
                 // yaml-cpp
-                PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Debug/libyaml-cppd.a"));
+                PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Debug/yaml-cpp/libyaml-cppd.a"));
 
                 // boost
                 PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Debug/boost/libboost_filesystem.a"));
@@ -115,7 +115,7 @@ public class AwsGameKitEditor : ModuleRules
                 PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Release/libaws-gamekit-game-saving.a"));
                 PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Release/libaws-gamekit-identity.a"));
                 PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Release/libaws-gamekit-user-gameplay-data.a"));
-                PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Release/libyaml-cppd.a"));
+                PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Release/yaml-cpp/libyaml-cppd.a"));
                 PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries/IOS/Release/boost/libboost_filesystem.a"));
             }
         }

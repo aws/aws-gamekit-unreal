@@ -39,15 +39,15 @@ private:
 
 public:
     static const FString MAX_SAVE_SLOTS_PER_PLAYER;
-    static const int DEFAULT_MAX_SAVE_SLOTS_PER_PLAYER = 10;
-    static const int SLIDER_MINIMUM_MAX_SAVE_SLOTS_PER_PLAYER = 0;
+    static const int DEFAULT_MAX_SAVE_SLOTS_PER_PLAYER;
+    static const int SLIDER_MINIMUM_MAX_SAVE_SLOTS_PER_PLAYER;
 
     /**
      * The maximum value the UI slider allows while dragging the slider bar.
      *
      * To use a larger value for your game, type the desired number into the UI instead of dragging the slider, or increase the value below:
      */
-    static const int SLIDER_MAXIMUM_MAX_SAVE_SLOTS_PER_PLAYER = 100;
+    static const int SLIDER_MAXIMUM_MAX_SAVE_SLOTS_PER_PLAYER;
 
     /**
      * The maximum value that can be manually typed into the UI slider field.
@@ -58,7 +58,7 @@ public:
      *
      * The number 100,000,000 was selected because: it's small enough to prevent integer overflow, it's large enough to be effectively infinite, and it looks nice.
      */
-    static const int SLIDER_MANUALLY_ENTERED_MAXIMUM_MAX_SAVE_SLOTS_PER_PLAYER = 100000000;
+    static const int SLIDER_MANUALLY_ENTERED_MAXIMUM_MAX_SAVE_SLOTS_PER_PLAYER;
 
     AwsGameKitGameSavingLayoutDetails(const FAwsGameKitEditorModule* editorModule);
     ~AwsGameKitGameSavingLayoutDetails() = default;

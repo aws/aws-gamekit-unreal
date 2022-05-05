@@ -67,7 +67,7 @@ std::string AwsGameKitLibraryWrapper::getPlatformDependentFilename()
 #elif PLATFORM_MAC
     FString projectPath = FPaths::ProjectDir();
     projectPath = IFileManager::Get().ConvertToAbsolutePathForExternalAppForRead(*projectPath);
-    return std::string(TCHAR_TO_UTF8(*projectPath)) + "/Binaries/Mac/" + filename + MAC_LIBRARY_EXTENSION;
+    return std::string(TCHAR_TO_UTF8(*projectPath)) + "Binaries/Mac/" + filename + MAC_LIBRARY_EXTENSION;
 #elif PLATFORM_IOS
     return "";
 #elif PLATFORM_ANDROID

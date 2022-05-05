@@ -11,6 +11,10 @@
 #include "UObject/NoExportTypes.h"
 #include "Misc/Paths.h"
 
+#if PLATFORM_MAC || PLATFORM_IOS
+#include "HAL/FileManager.h"
+#endif
+
 /**
  * Base class for all AWS GameKit library wrappers.
  */

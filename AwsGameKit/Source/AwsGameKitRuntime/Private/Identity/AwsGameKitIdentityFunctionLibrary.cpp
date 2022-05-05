@@ -338,7 +338,7 @@ void UAwsGameKitIdentityFunctionLibrary::GetUser(UObject* WorldContextObject,
                 response.FacebookRefId = UTF8_TO_TCHAR(getUserResponse->facebookRefId);
                 response.UserName = UTF8_TO_TCHAR(getUserResponse->userName);
                 response.Email = UTF8_TO_TCHAR(getUserResponse->email);
-                
+
                 State->Results = response;
             };
             typedef LambdaDispatcher<decltype(getUserInfoDispatcher), void, const GetUserResponse*> GetUserInfoDispatcher;

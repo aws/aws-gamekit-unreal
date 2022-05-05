@@ -217,6 +217,8 @@ protected:
     virtual void importFunctions(void* loadedDllHandle) override;
 
 public:
+    AwsGameKitCoreWrapper() {};
+    virtual ~AwsGameKitCoreWrapper() {};
 #pragma region AWS SDK
     /**
      * @brief Explicitly initialize the AWS SDK

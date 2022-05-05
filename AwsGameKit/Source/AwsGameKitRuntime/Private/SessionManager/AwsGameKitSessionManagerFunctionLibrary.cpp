@@ -31,34 +31,26 @@ void UAwsGameKitSessionManagerFunctionLibrary::ReloadConfig(UObject* WorldContex
             FAwsGameKitRuntimeModule* runtimeModule = FModuleManager::GetModulePtr<FAwsGameKitRuntimeModule>("AwsGameKitRuntime");
             SessionManagerLibrary sessionManagerLibrary = runtimeModule->GetSessionManagerLibrary();
 
+#if WITH_EDITOR
+            // This call is only needed in Editor mode. Packaged builds will load the configuration when the FAwsGameKitRuntimeModule module is loaded.
             sessionManagerLibrary.SessionManagerWrapper->ReloadConfig(sessionManagerLibrary.SessionManagerInstanceHandle);
+#else
+            UE_LOG(LogAwsGameKit, Display, TEXT("UAwsGameKitSessionManagerFunctionLibrary::ReloadConfig(): No-op in non-Editor build."));
+#endif
+
             State->Err = FAwsGameKitOperationResult{};
         });
     }
 }
 
-void UAwsGameKitSessionManagerFunctionLibrary::AreSettingsLoaded(UObject* WorldContextObject,
-    FLatentActionInfo LatentInfo,
-    const FeatureType_E featureType,
-    bool& Result,
-    EAwsGameKitSuccessOrFailureExecutionPin& SuccessOrFailure)
+bool UAwsGameKitSessionManagerFunctionLibrary::AreSettingsLoaded(const FeatureType_E featureType)
 {
     UE_LOG(LogAwsGameKit, Display, TEXT("UAwsGameKitSessionManagerFunctionLibrary::AreSettingsLoaded()"));
 
-    TAwsGameKitInternalActionStatePtr<bool> State;
-    FAwsGameKitOperationResult ResultStatus;
-    FNoopStruct ResultDelegate;
-    if (auto Action = InternalMakeAwsGameKitThreadedAction(State, WorldContextObject, LatentInfo, nullptr, SuccessOrFailure, ResultStatus, Result, ResultDelegate))
-    {
-        Action->LaunchThreadedWork([featureType, ResultStatus, State]
-        {
-            FAwsGameKitRuntimeModule* runtimeModule = FModuleManager::GetModulePtr<FAwsGameKitRuntimeModule>("AwsGameKitRuntime");
-            SessionManagerLibrary sessionManagerLibrary = runtimeModule->GetSessionManagerLibrary();
+    FAwsGameKitRuntimeModule* runtimeModule = FModuleManager::GetModulePtr<FAwsGameKitRuntimeModule>("AwsGameKitRuntime");
+    SessionManagerLibrary sessionManagerLibrary = runtimeModule->GetSessionManagerLibrary();
 
-            State->Results = sessionManagerLibrary.SessionManagerWrapper->GameKitSessionManagerAreSettingsLoaded(sessionManagerLibrary.SessionManagerInstanceHandle, AwsGameKitEnumConverter::ConvertFeatureEnum(featureType));
-            State->Err = FAwsGameKitOperationResult{};
-        });
-    }
+    return sessionManagerLibrary.SessionManagerWrapper->GameKitSessionManagerAreSettingsLoaded(sessionManagerLibrary.SessionManagerInstanceHandle, AwsGameKitEnumConverter::ConvertFeatureEnum(featureType));
 }
 
 void UAwsGameKitSessionManagerFunctionLibrary::SetToken(UObject* WorldContextObject,

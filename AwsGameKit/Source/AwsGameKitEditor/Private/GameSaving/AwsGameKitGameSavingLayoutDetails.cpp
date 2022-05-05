@@ -27,6 +27,10 @@
 #define LOCTEXT_NAMESPACE "AwsGameKitGameSavingLayoutDetails"
 
 const FString AwsGameKitGameSavingLayoutDetails::MAX_SAVE_SLOTS_PER_PLAYER = "max_save_slots_per_player";
+const int AwsGameKitGameSavingLayoutDetails::DEFAULT_MAX_SAVE_SLOTS_PER_PLAYER = 10;
+const int AwsGameKitGameSavingLayoutDetails::SLIDER_MINIMUM_MAX_SAVE_SLOTS_PER_PLAYER = 0;
+const int AwsGameKitGameSavingLayoutDetails::SLIDER_MAXIMUM_MAX_SAVE_SLOTS_PER_PLAYER = 100;
+const int AwsGameKitGameSavingLayoutDetails::SLIDER_MANUALLY_ENTERED_MAXIMUM_MAX_SAVE_SLOTS_PER_PLAYER = 100000000;
 
 AwsGameKitGameSavingLayoutDetails::AwsGameKitGameSavingLayoutDetails(const FAwsGameKitEditorModule* editorModule) : AwsGameKitFeatureLayoutDetails(FeatureType::GameStateCloudSaving, editorModule)
 {

@@ -250,6 +250,9 @@ public:
     static int32 GAMEKIT_ERROR_USER_GAMEPLAY_DATA_UNPROCESSED_ITEMS() { return GameKit::GAMEKIT_ERROR_USER_GAMEPLAY_DATA_UNPROCESSED_ITEMS; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_USER_GAMEPLAY_DATA_PAYLOAD_TOO_LARGE() { return GameKit::GAMEKIT_ERROR_USER_GAMEPLAY_DATA_PAYLOAD_TOO_LARGE; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_GAME_SAVING_SLOT_NOT_FOUND() { return GameKit::GAMEKIT_ERROR_GAME_SAVING_SLOT_NOT_FOUND; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")

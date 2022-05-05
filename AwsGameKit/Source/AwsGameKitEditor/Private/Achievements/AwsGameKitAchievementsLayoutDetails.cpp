@@ -448,7 +448,7 @@ void AwsGameKitAchievementsLayoutDetails::RefreshAchievementIconBaseUrl()
 FReply AwsGameKitAchievementsLayoutDetails::AddAchievement()
 {
     TSharedPtr<AwsGameKitAchievementUI> achievement = MakeShareable(new AwsGameKitAchievementUI(this));
-    const TSharedRef<SScrollBox, ESPMode::NotThreadSafe> achievementField = achievement->GetRepresentation();
+    const auto achievementField = achievement->GetRepresentation();
     const FString key = FString::FromInt(newAchievementCounter);
     this->achievements.Add(key, achievement);
     achievement->idString = key;
@@ -624,7 +624,7 @@ FReply AwsGameKitAchievementsLayoutDetails::UploadAchievements()
                 AdminAchievement ach;
                 achievement.Value->ToAchievement(ach);
                 updateStruct.achievements.Add(ach);
-            }   
+            }
         }
     }
 
@@ -804,7 +804,7 @@ void  AwsGameKitAchievementsLayoutDetails::SetCloudActionButtonState()
     }
 }
 
-bool AwsGameKitAchievementsLayoutDetails::IsSaveDataToCloudEnabled() const 
+bool AwsGameKitAchievementsLayoutDetails::IsSaveDataToCloudEnabled() const
 {
     bool changedAchievementExists = false;
 

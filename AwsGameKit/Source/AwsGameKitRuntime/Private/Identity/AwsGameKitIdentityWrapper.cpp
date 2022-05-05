@@ -11,6 +11,11 @@
 const FString AwsGameKitIdentityWrapper::KEY_FEDERATED_LOGIN_URL_REQUEST_ID = "requestId";
 const FString AwsGameKitIdentityWrapper::KEY_FEDERATED_LOGIN_URL = "loginUrl";
 
+AwsGameKitIdentityWrapper::~AwsGameKitIdentityWrapper()
+{
+    Shutdown();
+}
+
 void AwsGameKitIdentityWrapper::importFunctions(void* loadedDllHandle)
 {
     UE_LOG(LogAwsGameKit, Display, TEXT("AwsGameKitIdentityWrapper::importFunctions()"));
@@ -67,6 +72,8 @@ unsigned int AwsGameKitIdentityWrapper::GameKitIdentityResendConfirmationCode(GA
 
 unsigned int AwsGameKitIdentityWrapper::GameKitIdentityLogin(GAMEKIT_IDENTITY_INSTANCE_HANDLE identityInstance, UserLogin userLogin)
 {
+    UE_LOG(LogAwsGameKit, Display, TEXT("AwsGameKitIdentityWrapper::GameKitIdentityLogin()"));
+    UE_LOG(LogAwsGameKit, Display, TEXT("identityInstance: %p"), identityInstance);
     CHECK_PLUGIN_FUNC_IS_LOADED(Identity, GameKitIdentityLogin, GameKit::GAMEKIT_ERROR_GENERAL);
 
     return INVOKE_FUNC(GameKitIdentityLogin, identityInstance, userLogin);

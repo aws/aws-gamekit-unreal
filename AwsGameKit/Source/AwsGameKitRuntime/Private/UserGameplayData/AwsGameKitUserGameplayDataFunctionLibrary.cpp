@@ -57,7 +57,7 @@ void UAwsGameKitUserGameplayDataFunctionLibrary::AddBundle(
         {
             FAwsGameKitRuntimeModule* runtimeModule = FModuleManager::GetModulePtr<FAwsGameKitRuntimeModule>("AwsGameKitRuntime");
             UserGameplayDataLibrary library = runtimeModule->GetUserGameplayDataLibrary();
-            
+
             int32 pairCount = userGameplayDataBundle.BundleMap.Num();
             IntResult result;
 
@@ -298,12 +298,12 @@ void UAwsGameKitUserGameplayDataFunctionLibrary::DeleteBundleItems(UObject* Worl
 void UAwsGameKitUserGameplayDataFunctionLibrary::SetNetworkChangeDelegate(const FNetworkStatusChangeDelegate& NetworkStatusChangeDelegate)
 {
     UE_LOG(LogAwsGameKit, Display, TEXT("UAwsGameKitUserGameplayDataFunctionLibrary::SetNetworkChangeDelegate()"));
-    
+
     if (NetworkStatusChangeDelegate.IsBound())
     {
         FAwsGameKitRuntimeModule* runtimeModule = FModuleManager::GetModulePtr<FAwsGameKitRuntimeModule>("AwsGameKitRuntime");
         runtimeModule->SetNetworkChangeDelegate(NetworkStatusChangeDelegate);
-        
+
         UserGameplayDataLibrary library = runtimeModule->GetUserGameplayDataLibrary();
         library.UserGameplayDataWrapper->GameKitUserGameplayDataSetNetworkChangeCallback(library.UserGameplayDataInstanceHandle, runtimeModule, &FAwsGameKitRuntimeModule::OnNetworkStatusChangeDispatcher::Dispatch);
     }
@@ -334,7 +334,7 @@ void UAwsGameKitUserGameplayDataFunctionLibrary::SetCacheProcessedDelegate(const
 void UAwsGameKitUserGameplayDataFunctionLibrary::StartRetryBackgroundThread()
 {
     UE_LOG(LogAwsGameKit, Display, TEXT("UAwsGameKitUserGameplayDataFunctionLibrary::StartRetryBackgroundThread()"));
-    
+
     FAwsGameKitRuntimeModule* runtimeModule = FModuleManager::GetModulePtr<FAwsGameKitRuntimeModule>("AwsGameKitRuntime");
     UserGameplayDataLibrary library = runtimeModule->GetUserGameplayDataLibrary();
     library.UserGameplayDataWrapper->GameKitUserGameplayDataStartRetryBackgroundThread(library.UserGameplayDataInstanceHandle);
@@ -342,8 +342,8 @@ void UAwsGameKitUserGameplayDataFunctionLibrary::StartRetryBackgroundThread()
 
 void UAwsGameKitUserGameplayDataFunctionLibrary::StopRetryBackgroundThread()
 {
-    UE_LOG(LogAwsGameKit, Display, TEXT("UAwsGameKitUserGameplayDataFunctionLibrary::UAwsGameKitUserGameplayDataFunctionLibrary()"));
-    
+    UE_LOG(LogAwsGameKit, Display, TEXT("UAwsGameKitUserGameplayDataFunctionLibrary::StopRetryBackgroundThread()"));
+
     FAwsGameKitRuntimeModule* runtimeModule = FModuleManager::GetModulePtr<FAwsGameKitRuntimeModule>("AwsGameKitRuntime");
     UserGameplayDataLibrary library = runtimeModule->GetUserGameplayDataLibrary();
     library.UserGameplayDataWrapper->GameKitUserGameplayDataStopRetryBackgroundThread(library.UserGameplayDataInstanceHandle);
@@ -396,7 +396,7 @@ void UAwsGameKitUserGameplayDataFunctionLibrary::LoadFromCache(UObject* WorldCon
 
 #if PLATFORM_ANDROID
             // Convert to platform path
-            FString androidCacheFilePath = IAndroidPlatformFile::GetPlatformPhysical().ConvertToAbsolutePathForExternalAppForRead(*CacheFile); 
+            FString androidCacheFilePath = IAndroidPlatformFile::GetPlatformPhysical().ConvertToAbsolutePathForExternalAppForRead(*CacheFile);
             IntResult result(library.UserGameplayDataWrapper->GameKitUserGameplayDataLoadApiCallsFromCache(library.UserGameplayDataInstanceHandle, TCHAR_TO_UTF8(*androidCacheFilePath)));
 #else
             IntResult result(library.UserGameplayDataWrapper->GameKitUserGameplayDataLoadApiCallsFromCache(library.UserGameplayDataInstanceHandle, TCHAR_TO_UTF8(*CacheFile)));

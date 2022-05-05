@@ -4,6 +4,7 @@
 import os
 from unittest import TestCase
 from unittest.mock import patch, MagicMock
+import urllib.parse
 
 with patch("boto3.resource") as boto_resource_mock:
     from functions.usergamedata.DeleteBundle import index
@@ -24,7 +25,7 @@ class TestDeleteBundle(TestCase):
     def test_delete_bundle_item_key_missing_returns_400_error(self):
         # Arrange
         event = self.get_lambda_event()
-        event['body'] = '{}'
+        event['queryStringParameters'] = {'payload': urllib.parse.quote('{}')}
 
         # Act
         result = index.lambda_handler(event, None)
@@ -69,6 +70,18 @@ class TestDeleteBundle(TestCase):
         self.assertEqual(400, result['statusCode'])
         index.ddb_resource.batch_write_item.assert_not_called()
 
+    def test_delete_bundle_payload_too_long_returns_400_error(self):
+        # Arrange
+        event = self.get_lambda_event()
+        event['queryStringParameters'] = {'payload': urllib.parse.quote('x' * 1025)}
+
+        # Act
+        result = index.lambda_handler(event, None)
+
+        # Assert
+        self.assertEqual(400, result['statusCode'])
+        index.ddb_resource.batch_write_item.assert_not_called()
+
     def test_delete_bundle_invalid_player_returns_401_error(self):
         # Arrange
         event = self.get_lambda_event()
@@ -81,10 +94,10 @@ class TestDeleteBundle(TestCase):
         self.assertEqual(401, result['statusCode'])
         index.ddb_resource.batch_write_item.assert_not_called()
 
-    def test_delete_bundle_key_passed_in_body_returns_204_success(self):
+    def test_delete_bundle_key_passed_in_query_string_returns_204_success(self):
         # Arrange
         event = self.get_lambda_event()
-        event['body'] = '{"bundle_item_keys": ["SCORE1","SCORE2"]}'
+        event['queryStringParameters'] = {'payload': urllib.parse.quote('{"bundle_item_keys": ["SCORE1","SCORE2"]}')}
 
         # Act
         result = index.lambda_handler(event, None)
@@ -98,10 +111,10 @@ class TestDeleteBundle(TestCase):
                 {'DeleteRequest':
                      {'Key': {'player_id_bundle': '12345678-1234-1234-1234-123456789012_BANANA_BUNDLE', 'bundle_item_key': 'SCORE2'}}}]})
 
-    def test_delete_bundle_no_body_passed_returns_success(self):
+    def test_delete_bundle_no_params_passed_returns_success(self):
         # Arrange
         event = self.get_lambda_event()
-        event['body'] = None
+        event['queryStringParameters'] = None
         index.ddb_resource.Table().query.side_effect = [{'Items': [{'player_id_bundle': '12345_TestBushel', 'bundle_item_key': 'TestBanana'}]}, {'Items': []}]
 
         # Act
