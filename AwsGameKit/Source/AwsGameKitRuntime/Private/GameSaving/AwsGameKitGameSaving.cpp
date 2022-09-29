@@ -94,18 +94,18 @@ void AwsGameKitGameSaving::GetSlotSyncStatus(const FGameSavingGetSlotSyncStatusR
         FGraphEventRef OrderedWorkChain;
         GameSavingLibrary gameSavingLibrary = GetGameSavingLibraryFromModule();
 
-        auto getSlotSyncStatusDispatcher = [&](const Slot* cachedSlots, unsigned int slotCount, Slot actedOnSlot, unsigned int callStatus)
+        auto getSlotSyncStatusDispatcher = [&](const Slot* cachedSlots, unsigned int slotCount, const Slot* actedOnSlot, unsigned int callStatus)
         {
             UE_LOG(LogAwsGameKit, Display, TEXT("AwsGameKitGameSaving::GetSlotSyncStatus() GetSlotSyncStatus::Dispatch"));
 
             FGameSavingSlotActionResults results;
             results.Slots.Slots = FGameSavingSlot::ToArray(cachedSlots, slotCount);
-            results.ActedOnSlot = FGameSavingSlot::From(actedOnSlot);
+            results.ActedOnSlot = FGameSavingSlot::From(*actedOnSlot);
             results.CallStatus = callStatus;
 
             InternalAwsGameKitRunDelegateOnGameThread(OrderedWorkChain, ResultDelegate, IntResult(callStatus), results);
         };
-        typedef LambdaDispatcher<decltype(getSlotSyncStatusDispatcher), void, const Slot*, unsigned int, Slot, unsigned int> GetSlotSyncStatusDispatcher;
+        typedef LambdaDispatcher<decltype(getSlotSyncStatusDispatcher), void, const Slot*, unsigned int, const Slot*, unsigned int> GetSlotSyncStatusDispatcher;
 
         gameSavingLibrary.GameSavingWrapper->GameKitGetSlotSyncStatus(gameSavingLibrary.GameSavingInstanceHandle, &getSlotSyncStatusDispatcher, GetSlotSyncStatusDispatcher::Dispatch, TCHAR_TO_UTF8(*Request.SlotName));
     });
@@ -120,18 +120,18 @@ void AwsGameKitGameSaving::DeleteSlot(const FGameSavingDeleteSlotRequest& Reques
         FGraphEventRef OrderedWorkChain;
         GameSavingLibrary gameSavingLibrary = GetGameSavingLibraryFromModule();
 
-        auto dispatcher = [&](const Slot* cachedSlots, unsigned int slotCount, Slot actedOnSlot, unsigned int callStatus)
+        auto dispatcher = [&](const Slot* cachedSlots, unsigned int slotCount, const Slot* actedOnSlot, unsigned int callStatus)
         {
             UE_LOG(LogAwsGameKit, Display, TEXT("AwsGameKitGameSaving::DeleteSlot() DeleteSlot::Dispatch"));
 
             FGameSavingSlotActionResults results;
             results.Slots.Slots = FGameSavingSlot::ToArray(cachedSlots, slotCount);
-            results.ActedOnSlot = FGameSavingSlot::From(actedOnSlot);
+            results.ActedOnSlot = FGameSavingSlot::From(*actedOnSlot);
             results.CallStatus = callStatus;
 
             InternalAwsGameKitRunDelegateOnGameThread(OrderedWorkChain, ResultDelegate, IntResult(callStatus), results);
         };
-        typedef LambdaDispatcher<decltype(dispatcher), void, const Slot*, unsigned int, Slot, unsigned int> Dispatcher;
+        typedef LambdaDispatcher<decltype(dispatcher), void, const Slot*, unsigned int, const Slot*, unsigned int> Dispatcher;
 
         gameSavingLibrary.GameSavingWrapper->GameKitDeleteSlot(gameSavingLibrary.GameSavingInstanceHandle, &dispatcher, Dispatcher::Dispatch, TCHAR_TO_UTF8(*Request.SlotName));
     });
@@ -146,18 +146,18 @@ void AwsGameKitGameSaving::SaveSlot(const FGameSavingSaveSlotRequest& Request, T
         FGraphEventRef OrderedWorkChain;
         GameSavingLibrary gameSavingLibrary = GetGameSavingLibraryFromModule();
 
-        auto dispatcher = [&](const Slot* cachedSlots, unsigned int slotCount, Slot actedOnSlot, unsigned int callStatus)
+        auto dispatcher = [&](const Slot* cachedSlots, unsigned int slotCount, const Slot* actedOnSlot, unsigned int callStatus)
         {
             UE_LOG(LogAwsGameKit, Display, TEXT("AwsGameKitGameSaving::SaveSlot() SaveSlot::Dispatch"));
 
             FGameSavingSlotActionResults results;
             results.Slots.Slots = FGameSavingSlot::ToArray(cachedSlots, slotCount);
-            results.ActedOnSlot = FGameSavingSlot::From(actedOnSlot);
+            results.ActedOnSlot = FGameSavingSlot::From(*actedOnSlot);
             results.CallStatus = callStatus;
 
             InternalAwsGameKitRunDelegateOnGameThread(OrderedWorkChain, ResultDelegate, IntResult(callStatus), results);
         };
-        typedef LambdaDispatcher<decltype(dispatcher), void, const Slot*, unsigned int, Slot, unsigned int> Dispatcher;
+        typedef LambdaDispatcher<decltype(dispatcher), void, const Slot*, unsigned int, const Slot*, unsigned int> Dispatcher;
 
         ModelCache modelCache(Request);
         GameSavingModel gameSavingModel = modelCache;
@@ -174,20 +174,20 @@ void AwsGameKitGameSaving::LoadSlot(const FGameSavingLoadSlotRequest& Request, T
         FGraphEventRef OrderedWorkChain;
         GameSavingLibrary gameSavingLibrary = GetGameSavingLibraryFromModule();
 
-        auto dispatcher = [&](const Slot* cachedSlots, unsigned int slotCount, Slot actedOnSlot, const uint8_t* data, unsigned int dataSize, unsigned int callStatus)
+        auto dispatcher = [&](const Slot* cachedSlots, unsigned int slotCount, const Slot* actedOnSlot, const uint8_t* data, unsigned int dataSize, unsigned int callStatus)
         {
             UE_LOG(LogAwsGameKit, Display, TEXT("AwsGameKitGameSaving::LoadSlot() LoadSlot::Dispatch"));
 
             FGameSavingDataResults results;
             results.Slots.Slots = FGameSavingSlot::ToArray(cachedSlots, slotCount);
-            results.ActedOnSlot = FGameSavingSlot::From(actedOnSlot);
+            results.ActedOnSlot = FGameSavingSlot::From(*actedOnSlot);
             results.Data.AddUninitialized(dataSize);
             FMemory::Memcpy(results.Data.GetData(), (uint8*)data, dataSize);
             results.CallStatus = callStatus;
 
             InternalAwsGameKitRunDelegateOnGameThread(OrderedWorkChain, ResultDelegate, IntResult(callStatus), results);
         };
-        typedef LambdaDispatcher<decltype(dispatcher), void, const Slot*, unsigned int, Slot, const uint8_t*, unsigned int, unsigned int> Dispatcher;
+        typedef LambdaDispatcher<decltype(dispatcher), void, const Slot*, unsigned int, const Slot*, const uint8_t*, unsigned int, unsigned int> Dispatcher;
 
         ModelCache modelCache(Request);
         GameSavingModel gameSavingModel = modelCache;

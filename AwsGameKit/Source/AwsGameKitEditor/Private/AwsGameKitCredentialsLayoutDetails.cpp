@@ -939,7 +939,7 @@ bool AwsGameKitCredentialsLayoutDetails::TryFindConfigFile(FString& outConfigPat
 
 bool AwsGameKitCredentialsLayoutDetails::ConfigFileExists(const FString& subfolder)
 {
-    const FString clientConfigPath = FPaths::ConvertRelativePathToFull(FPaths::GameSourceDir().Replace(TEXT("source/"), ToCStr(subfolder + ClientConfigFile), ESearchCase::IgnoreCase));
+    const FString clientConfigPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir().Append(ToCStr(subfolder + ClientConfigFile)));
     return FPaths::FileExists(clientConfigPath);
 }
 
@@ -1663,7 +1663,7 @@ FReply AwsGameKitCredentialsLayoutDetails::OnSubmit()
 
             AsyncTask(ENamedThreads::GameThread, [&, result, customEnv, accountDetails, featureResourceManager, credentialsManager, featureControlCenter]()
                 {
-                    if (result.Result == GameKit::GAMEKIT_SUCCESS)
+                    if (result.Result == GAMEKIT_SUCCESS)
                     {
                         fieldValidationVisibility = EVisibility::Collapsed;
 
@@ -1721,9 +1721,18 @@ FReply AwsGameKitCredentialsLayoutDetails::OnSubmit()
                         submitButton->SetEnabled(true);
 
                         fieldValidationVisibility = EVisibility::Visible;
-                        FString hexError = FString(GameKit::StatusCodeToHexStr(result.Result).c_str());
-                        submitValidationText = LOCTEXT("CredentialsNotValidated", "The user credentials you provided cannot be validated.\nPlease enter a valid access key pair or create a new one using AWS IAM.");
-                        UE_LOG(LogAwsGameKit, Error, TEXT("The user credentials you provided cannot be validated: error %s"), *hexError);
+                        FString hexError = FString(StatusCodeToHexStr(result.Result).c_str());
+
+                        if (result.Result == GAMEKIT_ERROR_BOOTSTRAP_TOO_MANY_BUCKETS)
+                        {
+                            submitValidationText = LOCTEXT("TooManyBuckets", "The AWS account provided contains too many S3 buckets. Please delete any unused S3 buckets or request an increase through the AWS console.");
+                            UE_LOG(LogAwsGameKit, Error, TEXT("The AWS account provided has reached its limit on S3 buckets. Please navigate to the AWS console to delete unnecessary buckets or request an increase: error %s"), *hexError);
+                        }
+                        else 
+                        {
+                            submitValidationText = LOCTEXT("CredentialsNotValidated", "The user credentials you provided cannot be validated.\nPlease enter a valid access key pair or create a new one using AWS IAM.");
+                            UE_LOG(LogAwsGameKit, Error, TEXT("The user credentials you provided cannot be validated: error %s"), *hexError);
+                        }
 
                         submitValidation->SetVisibility(fieldValidationVisibility);
                     }

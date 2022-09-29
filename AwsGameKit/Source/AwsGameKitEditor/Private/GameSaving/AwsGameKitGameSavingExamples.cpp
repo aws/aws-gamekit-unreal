@@ -316,6 +316,8 @@ TSharedPtr<SWindow> AAwsGameKitGameSavingExamples::GetPopoutWindow(const FString
     const static int ALIGNMENT_FILLER = 1;
     const static int CENTER_ELEMENT_WIDTH = 2;
 
+    filePath = SNew(SEditableTextBox).IsReadOnly(true).HintText(FText::FromString(R"(C:/Saves/SaveNameExample.dat)"));
+
     return SNew(SWindow)
         .SizingRule(ESizingRule::UserSized)
         .ClientSize(FVector2D(windowWidth, windowHeight))
@@ -335,6 +337,7 @@ TSharedPtr<SWindow> AAwsGameKitGameSavingExamples::GetPopoutWindow(const FString
                     // Save Name
                     + SVerticalBox::Slot()
                     .Padding(rowPadding)
+                    .AutoHeight()
                     [
                         SNew(SHorizontalBox)
                         + SHorizontalBox::Slot()
@@ -342,7 +345,6 @@ TSharedPtr<SWindow> AAwsGameKitGameSavingExamples::GetPopoutWindow(const FString
                         [
                             SNew(SVerticalBox)
                             + SVerticalBox::Slot()
-                            .VAlign(VAlign_Center)
                             [
                             SNew(STextBlock)
                             .Text(LOCTEXT("SaveNameLabel", "Save Name:"))
@@ -357,6 +359,7 @@ TSharedPtr<SWindow> AAwsGameKitGameSavingExamples::GetPopoutWindow(const FString
                     ]
                     + SVerticalBox::Slot()
                     .Padding(3,0)
+                    .AutoHeight()
                     [
                         SNew(SHorizontalBox)
                         + SHorizontalBox::Slot()
@@ -378,6 +381,7 @@ TSharedPtr<SWindow> AAwsGameKitGameSavingExamples::GetPopoutWindow(const FString
                     // Metadata
                     + SVerticalBox::Slot()
                     .Padding(rowPadding)
+                    .AutoHeight()
                     [
 
                         SNew(SBox)
@@ -409,6 +413,7 @@ TSharedPtr<SWindow> AAwsGameKitGameSavingExamples::GetPopoutWindow(const FString
                     // Override
                     + SVerticalBox::Slot()
                     .Padding(rowPadding)
+                    .AutoHeight()
                     [
                         SNew(SHorizontalBox)
                         + SHorizontalBox::Slot()
@@ -447,7 +452,7 @@ TSharedPtr<SWindow> AAwsGameKitGameSavingExamples::GetPopoutWindow(const FString
                             .VAlign(VAlign_Center)
                             [
                                 SNew(STextBlock)
-                                .Text(LOCTEXT("SaveFileLocation", "Game Save File Location:"))
+                                .Text(LOCTEXT("SaveFileLocation", "Save File Location:"))
                             ]
                         ]
                         + SHorizontalBox::Slot()
@@ -467,9 +472,7 @@ TSharedPtr<SWindow> AAwsGameKitGameSavingExamples::GetPopoutWindow(const FString
                             + SHorizontalBox::Slot()
                             .Padding(rowPadding, 0, 0, 0)
                             [
-                                SAssignNew(filePath, SEditableTextBox)
-                                .HintText(FText::FromString(R"(C:/Saves/SaveNameExample.dat)"))
-                                .IsReadOnly(true)
+                                filePath.ToSharedRef()
                             ]
                         ]
                     ]

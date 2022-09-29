@@ -113,6 +113,21 @@ public class AwsGameKitCore : ModuleRules
 
         if (Target.Platform == UnrealTargetPlatform.Android)
         {
+            /*
+              The Android libraries directory must have this hierarchy to support combined 32 + 64 bit builds:
+              PluginDirectory
+                Libraries
+                    Android
+                        arm64
+                            Debug 
+                            Release
+                        armv7
+                            Debug
+                            Release
+             */
+
+            IList<string> architectures = new List<string> { "armv7", "arm64" };
+
             IList<string> libs = new List<string>
             {
                 // Aws sdk
@@ -158,25 +173,39 @@ public class AwsGameKitCore : ModuleRules
             };
 
             string buildFlavor = string.Empty;
+            IList<string> boostLibs = new List<string>();
+            IDictionary<string, string> boostMapping = new Dictionary<string, string>()
+            {
+                { "armv7", "a32" },
+                { "arm64", "a64" }
+            };
+
             if (Target.Configuration == UnrealTargetConfiguration.Debug || Target.Configuration == UnrealTargetConfiguration.DebugGame || Target.Configuration == UnrealTargetConfiguration.Development)
             {
                 buildFlavor = "Debug";
-
-                // Boost dependency name changes if it is debug
-                libs.Add("libboost_filesystem-mt-d-a32.a");
-                libs.Add("libboost_iostreams-mt-d-a32.a");
+                boostLibs.Add("libboost_filesystem-mt-d-{0}.a");
+                boostLibs.Add("libboost_iostreams-mt-d-{0}.a");
             }
             else
             {
                 buildFlavor = "Release";
-                libs.Add("libboost_filesystem-mt-a32.a");
-                libs.Add("libboost_iostreams-mt-a32.a");
+                boostLibs.Add("libboost_filesystem-mt-{0}.a");
+                boostLibs.Add("libboost_iostreams-mt-{0}.a");
             }
 
-            foreach (var lib in libs)
+            foreach (var architecture in architectures)
             {
-                PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries", "Android", buildFlavor, lib));
+                foreach (var lib in libs)
+                {
+                    PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries", "Android", architecture, buildFlavor, lib));
+                }
+
+                foreach (var lib in boostLibs)
+                {
+                    PublicAdditionalLibraries.Add(Path.Combine(PluginDirectory, "Libraries", "Android", architecture, buildFlavor, string.Format(lib, boostMapping[architecture])));
+                }
             }
+
         }
 
         PublicDependencyModuleNames.AddRange(

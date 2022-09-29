@@ -309,7 +309,6 @@ Resources:
         S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
         S3Key: !Sub 'functions/identity/CognitoFbCallbackHandler.${LambdaFunctionsReplacementID}.zip'
       Runtime: python3.7
-      MemorySize: 3538
       Timeout: 25
       TracingConfig:
         Mode: Active
@@ -590,7 +589,7 @@ Resources:
         client_id: !Ref FacebookClientId
         client_secret: '{{resolve:secretsmanager:gamekit_{{AWSGAMEKIT::SYS::ENV}}_{{AWSGAMEKIT::SYS::GAMENAME}}_facebook_client_secret}}'
         authorize_scopes: 'public_profile, email'
-        api_version: v6.0
+        api_version: v12.0
       ProviderType: Facebook
       AttributeMapping:
         email: email

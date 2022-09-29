@@ -44,7 +44,7 @@ void AwsGameKitSessionManagerWrapper::ReloadConfig(GAMEKIT_SESSION_MANAGER_INSTA
     UE_LOG(LogAwsGameKit, Display, TEXT("AwsGameKitSessionManagerWrapper::ReloadConfig(%s)"), *subfolder);
 
     FFileManagerGeneric fileManager;
-    FString src = FPaths::ConvertRelativePathToFull(FPaths::GameSourceDir().Replace(TEXT("source/"), ToCStr(subfolder + ClientConfigFile), ESearchCase::IgnoreCase));
+    FString src = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir().Append(ToCStr(subfolder + ClientConfigFile)));
     FString dest = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("GameKitConfig"), ClientConfigFile);
     uint32 result = fileManager.Copy(ToCStr(dest), ToCStr(src), true);
 
@@ -68,7 +68,7 @@ void AwsGameKitSessionManagerWrapper::ReloadConfig(GAMEKIT_SESSION_MANAGER_INSTA
     FFileManagerGeneric fileManager;
 
 #if UE_BUILD_DEVELOPMENT && WITH_EDITOR
-    FString searchPath = FPaths::GameSourceDir().Replace(TEXT("source/"), TEXT(""), ESearchCase::IgnoreCase);
+    FString searchPath = FPaths::ProjectDir();
 #elif PLATFORM_ANDROID
     // Paths to config and cert are different depending on the deployment method. 
     // Packaged games that are installed should have the config in ProjectContentDir and the CA Certificate bundled as an asset.

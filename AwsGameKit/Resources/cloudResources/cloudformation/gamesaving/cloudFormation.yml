@@ -135,6 +135,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: 'AES256'
+      VersioningConfiguration:
+        Status: Enabled
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -297,6 +299,11 @@ Resources:
         Variables:
           GAMESAVES_BUCKET_NAME: !Ref PlayerGameSavesBucket
           DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
       Role: !GetAtt GeneratePreSignedGetURLLambdaRole.Arn
       Code:
         S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
@@ -332,6 +339,19 @@ Resources:
                 Resource:
                   - !Sub '${PlayerGameSavesBucket.Arn}'
                   - !Sub '${PlayerGameSavesBucket.Arn}/*'
+              - !If
+                - IsNotUsingThirdPartyIdentityProvider
+                -
+                  Effect: Allow
+                  Action:
+                    - 'dynamodb:Query'
+                  Resource:
+                    - !Sub
+                      - '${IdentityTableArn}/index/*'
+                      - IdentityTableArn:
+                          Fn::ImportValue:
+                            !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableArn'
+                - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -391,6 +411,11 @@ Resources:
           GAMESAVES_TABLE_NAME: !Ref PlayerGameSavesTable
           GAMESAVES_BUCKET_NAME: !Ref PlayerGameSavesBucket
           DETAILED_LOGGING_DISABLED: !Ref DetailedLambdaLoggingDisabled
+          IDENTITY_TABLE_NAME: !If
+            - IsNotUsingThirdPartyIdentityProvider
+            - !ImportValue
+              'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableName'
+            - !Ref AWS::NoValue
       Role: !GetAtt GeneratePreSignedPutURLLambdaRole.Arn
       Code:
         S3Bucket: !Sub 'do-not-delete-gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}'
@@ -432,6 +457,19 @@ Resources:
                 Resource:
                   - !Sub '${PlayerGameSavesTable.Arn}'
                   - !Sub '${PlayerGameSavesTable.Arn}/index/*'
+              - !If
+                - IsNotUsingThirdPartyIdentityProvider
+                -
+                  Effect: Allow
+                  Action:
+                    - 'dynamodb:Query'
+                  Resource:
+                    - !Sub
+                      - '${IdentityTableArn}/index/*'
+                      - IdentityTableArn:
+                          Fn::ImportValue:
+                            !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableArn'
+                - !Ref AWS::NoValue
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:

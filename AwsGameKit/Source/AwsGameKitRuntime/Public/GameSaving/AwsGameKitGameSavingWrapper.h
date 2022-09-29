@@ -55,8 +55,8 @@ namespace GameKit
 typedef void* GAMEKIT_GAME_SAVING_INSTANCE_HANDLE;
 
 typedef void(*FuncGameSavingResponseCallback)(DISPATCH_RECEIVER_HANDLE dispatchReceiver, const Slot* cachedSlots, unsigned int slotCount, bool complete, unsigned int callStatus);
-typedef void(*FuncGameSavingSlotActionResponseCallback)(DISPATCH_RECEIVER_HANDLE dispatchReceiver, const Slot* cachedSlots, unsigned int slotCount, Slot slot, unsigned int callStatus);
-typedef void(*FuncGameSavingDataResponseCallback)(DISPATCH_RECEIVER_HANDLE dispatchReceiver, const Slot* cachedSlots, unsigned int slotCount, Slot slot, const uint8_t* data, unsigned int dataSize, unsigned int callStatus);
+typedef void(*FuncGameSavingSlotActionResponseCallback)(DISPATCH_RECEIVER_HANDLE dispatchReceiver, const Slot* cachedSlots, unsigned int slotCount, const Slot* slot, unsigned int callStatus);
+typedef void(*FuncGameSavingDataResponseCallback)(DISPATCH_RECEIVER_HANDLE dispatchReceiver, const Slot* cachedSlots, unsigned int slotCount, const Slot* slot, const uint8_t* data, unsigned int dataSize, unsigned int callStatus);
 
 /**
  * @brief Save a byte array to a file, overwriting the file if it already exists.

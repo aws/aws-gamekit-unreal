@@ -12,8 +12,10 @@ This is a non-player facing Lambda function and used from the GameKit plugin.
 import boto3
 import botocore
 from gamekithelpers import handler_request, handler_response, s3
+import json
 import os
 from typing import Dict, List
+import urllib.parse
 
 # Use base Dynamo resource in order to catch errors for batch read / writes
 ddb_resource = boto3.resource('dynamodb')
@@ -117,11 +119,12 @@ def lambda_handler(event, context):
     """
     handler_request.log_event(event)
 
-    body = handler_request.get_body_as_json(event)
-    if body is None:
+    payload = handler_request.get_query_string_param(event, "payload")
+    if payload is None:
         return handler_response.invalid_request()
+    parsedBody = json.loads(urllib.parse.unquote(payload))
+    achievement_ids = parsedBody.get("achievement_ids")
 
-    achievement_ids = body.get('achievement_ids')
     if achievement_ids is None or len(achievement_ids) == 0:
         return handler_response.invalid_request()
 

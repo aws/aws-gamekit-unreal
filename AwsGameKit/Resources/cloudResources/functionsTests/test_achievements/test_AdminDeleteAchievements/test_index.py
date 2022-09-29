@@ -28,22 +28,10 @@ class TestIndex(TestCase):
         index.ddb_resource = MagicMock()
         index.achievements_bucket = MagicMock()
 
-    def test_lambda_returns_a_400_error_code_when_body_is_empty(self, delete_items_mock):
-        # Arrange
-        event = self.get_lambda_event()
-        event['body'] = None
-
-        # Act
-        result = index.lambda_handler(event, None)
-
-        # Assert
-        self.assertEqual(400, result['statusCode'])
-        self.assert_no_resources_called(delete_items_mock)
-
     def test_lambda_returns_a_400_error_code_when_achievements_id_key_is_missing(self, delete_items_mock):
         # Arrange
         event = self.get_lambda_event()
-        event['body'] = '{}'
+        event['queryStringParameters'] = '{}'
 
         # Act
         result = index.lambda_handler(event, None)
@@ -63,7 +51,7 @@ class TestIndex(TestCase):
         self.assertEqual(400, result['statusCode'])
         self.assert_no_resources_called(delete_items_mock)
 
-    def test_lambda_returns_a_200_success_code_when_achievement_ids_passed_in_body(self, delete_items_mock):
+    def test_lambda_returns_a_200_success_code_when_achievement_ids_passed_in_query_string_parameters(self, delete_items_mock):
         # Arrange
         event = self.get_lambda_event()
         index.ddb_resource.batch_get_item.return_value = \
@@ -180,7 +168,59 @@ class TestIndex(TestCase):
     def get_lambda_event(cls, achievement_ids: List[str] = None):
         if achievement_ids is None:
             achievement_ids = [ACHIEVEMENT_ID]
-        body = {
-            'achievement_ids': achievement_ids
+
+        return {
+            'resource': '/achievements/admin',
+            'path': '/achievements/admin',
+            'httpMethod': 'DELETE',
+            'headers': {
+                'Accept': '*/*',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Content-Type': 'application/json',
+                'Host': 'abcdefghij.execute-api.us-west-2.amazonaws.com',
+                'User-Agent': 'TestAgent',
+                'X-Amzn-Trace-Id': 'Root=1-61003a02-7e1356b05a1e1569614c0c46',
+                'X-Forwarded-For': '127.0.0.1',
+                'X-Forwarded-Port': '443',
+                'X-Forwarded-Proto': 'https'
+            },
+            'multiValueHeaders': {
+                'Accept': ['*/*'],
+                'Accept-Encoding': ['gzip, deflate, br'],
+                'Content-Type': ['application/json'],
+                'Host': ['abcdefghij.execute-api.us-west-2.amazonaws.com'],
+                'User-Agent': ['TestAgent'],
+                'X-Amzn-Trace-Id': ['Root=1-61003a02-7e1356b05a1e1569614c0c46'],
+                'X-Forwarded-For': ['127.0.0.1'],
+                'X-Forwarded-Port': ['443'],
+                'X-Forwarded-Proto': ['https']
+            },
+            'queryStringParameters': {'payload':json.dumps({'achievement_ids': achievement_ids})},
+            'multiValueQueryStringParameters': None,
+            'pathParameters': None,
+            'stageVariables': None,
+            'requestContext': {
+                'resourceId': 'abcdef',
+                'authorizer': {
+                    'claims': {
+                        'sub': '12345678-1234-1234-1234-123456789012',
+                        'iss': 'https://cognito-idp.us-west-2.amazonaws.com/us-west-2_123456789',
+                        'cognito:username': 'jakschic',
+                        'origin_jti': '12345678-1234-1234-1234-123456789012',
+                        'aud': '7s24tlabcn8n0defbfoghijsgn',
+                        'event_id': '6234d920-b637-4cdf-bd44-3a5e53f51569',
+                        'token_use': 'id',
+                        'auth_time': '1627438909',
+                        'custom:gk_user_id': '12345678-1234-1234-1234-123456789012',
+                        'exp': 'Wed Jul 28 03:21:49 UTC 2021',
+                        'iat': 'Wed Jul 28 02:21:49 UTC 2021',
+                        'jti': '7s24tlabcn8n0defbfoghijsgn',
+                        'email': 'xyz@abc.def'
+                    }
+                },
+                'domainName': 'abcdefghij.execute-api.us-west-2.amazonaws.com',
+                'apiId': 'abcdefghij'
+            },
+            'body': None,
+            'isBase64Encoded': False
         }
-        return http_event(body=json.dumps(body))

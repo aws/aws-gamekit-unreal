@@ -643,8 +643,6 @@ Resources:
         method.request.header.x-amz-date: true
       RequestValidatorId: !ImportValue
         'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRequestValidator'
-      RequestModels:
-        '$default': !Ref AchievementIdsModel
   AchievementByIdApiResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -692,21 +690,6 @@ Resources:
         properties:
           increment_by:
             type: integer
-  AchievementIdsModel:
-    Type: AWS::ApiGateway::Model
-    Properties:
-      RestApiId: !ImportValue
-        'Fn::Sub': 'gamekit-${GameKitEnv}-${GameKitGameName}-main:${AWS::Region}:MainRestApi'
-      ContentType: application/json
-      Description: Schema for Array of AchievementIds
-      Schema:
-        $schema: 'http://json-schema.org/draft-04/schema#'
-        type: object
-        properties:
-          achievement_ids:
-            type: array
-            items:
-              type: string
   AchievementsArrayModel:
     Type: AWS::ApiGateway::Model
     Properties:
@@ -796,6 +779,12 @@ Resources:
     DependsOn: ResizeIconLambdaPermission
     Type: AWS::S3::Bucket
     Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+      VersioningConfiguration:
+        Status: Enabled
       AccessControl: Private
       BucketName: !Sub 'gamekit-${GameKitEnv}-${GameKitShortAwsRegionCode}-${GameKitBase36AwsAccountId}-${GameKitGameName}-achievements'
       LifecycleConfiguration:
@@ -839,6 +828,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: 'AES256'
+      VersioningConfiguration:
+        Status: Enabled
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

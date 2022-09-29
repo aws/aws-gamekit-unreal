@@ -387,7 +387,7 @@ unsigned int AwsGameKitCoreWrapper::GameKitResourcesGetCurrentStackStatus(GAMEKI
 
 bool AwsGameKitCoreWrapper::GameKitResourcesIsCloudFormationInstanceTemplatePresent(GAMEKIT_FEATURERESOURCES_INSTANCE_HANDLE resourceInstance)
 {
-    CHECK_PLUGIN_FUNC_IS_LOADED(Core, GameKitResourcesIsCloudFormationInstanceTemplatePresent, nullptr);
+    CHECK_PLUGIN_FUNC_IS_LOADED(Core, GameKitResourcesIsCloudFormationInstanceTemplatePresent, false);
 
     return INVOKE_FUNC(GameKitResourcesIsCloudFormationInstanceTemplatePresent, resourceInstance);
 }

@@ -66,7 +66,7 @@ TSharedRef<IDetailCustomization> AwsGameKitAchievementsLayoutDetails::MakeInstan
 
 FString AwsGameKitAchievementsLayoutDetails::GetLocalAchievementsStateDir()
 {
-    return FPaths::ConvertRelativePathToFull(FPaths::GameSourceDir().Replace(TEXT("source/"), ToCStr(this->editorModule->GetFeatureResourceManager()->GetClientConfigSubdirectory())));
+    return FPaths::ConvertRelativePathToFull(FPaths::ProjectDir().Append(ToCStr(this->editorModule->GetFeatureResourceManager()->GetClientConfigSubdirectory())));
 }
 
 void AwsGameKitAchievementsLayoutDetails::ConfigureLocalStatePath()
@@ -229,7 +229,7 @@ FReply AwsGameKitAchievementsLayoutDetails::ConfigAchievements()
                     ]
 
                     + SHorizontalBox::Slot()
-                    .FillWidth(1)
+                    .FillWidth(2)
                     [
                         SNew(SHorizontalBox)
 
@@ -286,7 +286,7 @@ FReply AwsGameKitAchievementsLayoutDetails::ConfigAchievements()
                 [
                     SNew(SHorizontalBox)
                     + SHorizontalBox::Slot()
-                    .FillWidth(2)
+                    .FillWidth(1)
                     [
                         // empty for alignment
                         SNew(SOverlay)

@@ -49,9 +49,6 @@ public:
     static int32 GAMEKIT_ERROR_CLOUDFORMATION_FILE_SAVE_FAILED() { return GameKit::GAMEKIT_ERROR_CLOUDFORMATION_FILE_SAVE_FAILED; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
-    static int32 GAMEKIT_ERROR_FUNCTIONS_COPY_FAILED() { return GameKit::GAMEKIT_ERROR_FUNCTIONS_COPY_FAILED; }
-
-    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_SETTINGS_FILE_SAVE_FAILED() { return GameKit::GAMEKIT_ERROR_SETTINGS_FILE_SAVE_FAILED; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
@@ -82,6 +79,9 @@ public:
     static int32 GAMEKIT_ERROR_DIRECTORY_NOT_FOUND() { return GameKit::GAMEKIT_ERROR_DIRECTORY_NOT_FOUND; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_FUNCTIONS_COPY_FAILED() { return GameKit::GAMEKIT_ERROR_FUNCTIONS_COPY_FAILED; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_METHOD_NOT_IMPLEMENTED() { return GameKit::GAMEKIT_ERROR_METHOD_NOT_IMPLEMENTED; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
@@ -106,6 +106,9 @@ public:
     static int32 GAMEKIT_ERROR_REQUEST_TIMED_OUT() { return GameKit::GAMEKIT_ERROR_REQUEST_TIMED_OUT; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_SETTINGS_MISSING() { return GameKit::GAMEKIT_ERROR_SETTINGS_MISSING; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_BOOTSTRAP_BUCKET_LOOKUP_FAILED() { return GameKit::GAMEKIT_ERROR_BOOTSTRAP_BUCKET_LOOKUP_FAILED; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
@@ -119,6 +122,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_BOOTSTRAP_REGION_CODE_CONVERSION_FAILED() { return GameKit::GAMEKIT_ERROR_BOOTSTRAP_REGION_CODE_CONVERSION_FAILED; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_BOOTSTRAP_TOO_MANY_BUCKETS() { return GameKit::GAMEKIT_ERROR_BOOTSTRAP_TOO_MANY_BUCKETS; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_FUNCTIONS_PATH_NOT_FOUND() { return GameKit::GAMEKIT_ERROR_FUNCTIONS_PATH_NOT_FOUND; }
@@ -187,6 +193,18 @@ public:
     static int32 GAMEKIT_ERROR_CLOUDFORMATION_NO_CURRENT_STACK_STATUS() { return GameKit::GAMEKIT_ERROR_CLOUDFORMATION_NO_CURRENT_STACK_STATUS; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_FEATURE_NOT_AVAILABLE() { return GameKit::GAMEKIT_ERROR_FEATURE_NOT_AVAILABLE; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_ORCHESTRATION_INVALID_FEATURE_STATE() { return GameKit::GAMEKIT_ERROR_ORCHESTRATION_INVALID_FEATURE_STATE; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_ORCHESTRATION_INVALID_FEATURE_SETTINGS() { return GameKit::GAMEKIT_ERROR_ORCHESTRATION_INVALID_FEATURE_SETTINGS; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_ORCHESTRATION_DEPLOYMENT_IN_PROGRESS() { return GameKit::GAMEKIT_ERROR_ORCHESTRATION_DEPLOYMENT_IN_PROGRESS; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_REGISTER_USER_FAILED() { return GameKit::GAMEKIT_ERROR_REGISTER_USER_FAILED; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
@@ -221,6 +239,9 @@ public:
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_ACHIEVEMENTS_INVALID_ID() { return GameKit::GAMEKIT_ERROR_ACHIEVEMENTS_INVALID_ID; }
+
+    UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
+    static int32 GAMEKIT_ERROR_ACHIEVEMENTS_PAYLOAD_TOO_LARGE() { return GameKit::GAMEKIT_ERROR_ACHIEVEMENTS_PAYLOAD_TOO_LARGE; }
 
     UFUNCTION(BlueprintPure, Category = "AWS GameKit | Status Codes")
     static int32 GAMEKIT_ERROR_USER_GAMEPLAY_DATA_PAYLOAD_INVALID() { return GameKit::GAMEKIT_ERROR_USER_GAMEPLAY_DATA_PAYLOAD_INVALID; }

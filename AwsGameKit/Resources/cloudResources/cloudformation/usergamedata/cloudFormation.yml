@@ -633,6 +633,19 @@ Resources:
                   - 'lambda:InvokeFunction'
                 Resource:
                   - !Sub '${BatchDeleteHelperUserGameDataLambda.Arn}'
+              - !If
+                - IsNotUsingThirdPartyIdentityProvider
+                -
+                  Effect: Allow
+                  Action:
+                    - 'dynamodb:Query'
+                  Resource:
+                    - !Sub
+                      - '${IdentityTableArn}/index/*'
+                      - IdentityTableArn:
+                          Fn::ImportValue:
+                            !Sub 'gamekit-${GameKitEnv}-${GameKitGameName}-identity:${AWS::Region}:IdentityTableArn'
+                - !Ref AWS::NoValue
   DeleteAllUserGameDataLambda:
     Type: 'AWS::Lambda::Function'
     Properties:

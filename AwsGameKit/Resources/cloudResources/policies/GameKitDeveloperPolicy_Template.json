@@ -75,7 +75,6 @@
                 "iam:GetRolePolicy",
                 "iam:PutRolePolicy",
                 "iam:DeleteRolePolicy",
-                "iam:AttachRolePolicy",
                 "iam:DetachRolePolicy",
                 "iam:ListSAMLProviders",
                 "iam:GetSAMLProvider"
@@ -116,7 +115,8 @@
         },
         {
             "Action": [
-                "iam:PassRole"
+                "iam:PassRole",
+                "iam:AttachRolePolicy"
             ],
             "Effect": "Allow",
             "Resource": [

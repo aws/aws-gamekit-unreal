@@ -1,0 +1,5 @@
+# This file contains "safe" regex patterns that should not be flagged by git-secrets:
+# https://github.com/awslabs/git-secrets
+
+# Example AWS Account ID, used in Python unit tests:
+123456789012
