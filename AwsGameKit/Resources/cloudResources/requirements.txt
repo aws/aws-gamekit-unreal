@@ -8,4 +8,4 @@ cryptography == 3.4.7
 python-jose[cryptography] == 3.3.0
 
 # Image Processing Lambda Layer:
-Pillow == 9.0.1
+Pillow == 9.3.0
