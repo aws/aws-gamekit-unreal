@@ -14,6 +14,7 @@ class FeatureResourceManager;
 #include "Modules/ModuleInterface.h"
 #include "Modules/ModuleManager.h"
 #include "Templates/SharedPointer.h"
+#include "PropertyEditorModule.h"
 
 // Unreal forward declarations
 class FMessageEndpoint;

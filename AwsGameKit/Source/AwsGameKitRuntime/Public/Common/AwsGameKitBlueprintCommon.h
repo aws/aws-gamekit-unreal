@@ -12,6 +12,7 @@
 #include "Async/Async.h"
 #include "Containers/Queue.h"
 #include "Engine/LatentActionManager.h"
+#include "Engine/BlueprintGeneratedClass.h"
 #include "Engine/World.h"
 #include "LatentActions.h"
 #include "Misc/Optional.h"

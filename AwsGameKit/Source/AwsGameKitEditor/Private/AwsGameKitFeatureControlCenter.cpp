@@ -9,6 +9,7 @@
 #include "AwsGameKitEnumConverter.h"
 #include "AwsGameKitStyleSet.h"
 #include "EditorState.h"
+#include "EditorStyleSet.h"
 #include "FeatureResourceManager.h"
 #include "GameSaving/AwsGameKitGameSavingLayoutDetails.h"
 #include "Identity/AwsGameKitIdentityLayoutDetails.h"

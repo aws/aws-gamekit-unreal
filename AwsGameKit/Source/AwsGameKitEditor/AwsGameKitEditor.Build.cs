@@ -138,7 +138,8 @@ public class AwsGameKitEditor : ModuleRules
                 "AwsGameKitCore",
                 "AwsGameKitRuntime",
                 "Http",
-                "ImageWrapper"
+                "ImageWrapper",
+                "PropertyEditor"
             }
         );
 
